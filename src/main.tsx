@@ -23,10 +23,12 @@ const queryClient = new QueryClient({
 });
 
 async function bootstrap(): Promise<void> {
-  // The mock API is a single removable chunk. A real deployment drops this import
-  // and the bundle with it; nothing else in the product talks to a network directly.
-  const { startMockApi } = await import('./mocks/browser');
-  await startMockApi();
+  // Check if mock API should be loaded.
+  // When VITE_USE_MOCKS is 'false', the application communicates directly with the backend.
+  if (import.meta.env.VITE_USE_MOCKS !== 'false') {
+    const { startMockApi } = await import('./mocks/browser');
+    await startMockApi();
+  }
   const container = document.getElementById('root');
   if (!container) throw new Error('Root container is missing from the document.');
   createRoot(container).render(

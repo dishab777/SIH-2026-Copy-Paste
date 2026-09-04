@@ -53,14 +53,8 @@ function startFetchFallback(): void {
         const result = await handler.run({ request: request.clone(), requestId: requestId() });
         if (result?.response) return result.response;
       }
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: { code: 'NOT_FOUND', message: `No mock handler matches ${url.pathname}.` },
-          servedAt: new Date().toISOString(),
-        }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } },
-      );
+      // If no mock handler matched, pass through to the real backend
+      return original(input as RequestInfo, init);
     }
 
     return original(input as RequestInfo, init);

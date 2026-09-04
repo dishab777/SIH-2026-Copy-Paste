@@ -1,4 +1,4 @@
-import type { ApiError, ApiResponse } from '@/types/models';
+import type { ApiError } from '@/types/models';
 
 export class PrayogApiError extends Error {
   readonly code: string;
@@ -22,14 +22,79 @@ export interface Fetched<T> {
   message?: string;
 }
 
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('nexus_auth_token') || localStorage.getItem('prayog_auth_token');
+}
+
+export function setAuthToken(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    localStorage.setItem('nexus_auth_token', token);
+  } else {
+    localStorage.removeItem('nexus_auth_token');
+    localStorage.removeItem('prayog_auth_token');
+  }
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<Fetched<T>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+
   const response = await fetch(path, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers,
   });
-  const body = (await response.json()) as ApiResponse<T>;
-  if (!body.success) throw new PrayogApiError(response.status, body.error);
-  return { data: body.data, servedAt: body.servedAt, message: body.message };
+
+  let rawBody: any;
+  try {
+    rawBody = await response.json();
+  } catch {
+    rawBody = {};
+  }
+
+  // 1. Enveloped mock or standardized error format
+  if (rawBody && typeof rawBody === 'object' && rawBody.success === false) {
+    throw new PrayogApiError(response.status, rawBody.error);
+  }
+
+  // 2. Direct HTTP error from backend (FastAPI { detail: ... } or generic)
+  if (!response.ok) {
+    const message =
+      typeof rawBody?.detail === 'string'
+        ? rawBody.detail
+        : rawBody?.error?.message || response.statusText || 'Request failed';
+
+    const details = Array.isArray(rawBody?.detail)
+      ? rawBody.detail.map((d: any) => (typeof d === 'string' ? d : d.msg || JSON.stringify(d)))
+      : [];
+
+    throw new PrayogApiError(response.status, {
+      code: `HTTP_${response.status}`,
+      message,
+      details,
+    });
+  }
+
+  // 3. Enveloped success format
+  if (rawBody && typeof rawBody === 'object' && rawBody.success === true && 'data' in rawBody) {
+    return {
+      data: rawBody.data,
+      servedAt: rawBody.servedAt || new Date().toISOString(),
+      message: rawBody.message,
+    };
+  }
+
+  // 4. Direct FastAPI success format (unwrapped payload)
+  return {
+    data: rawBody as T,
+    servedAt: new Date().toISOString(),
+    message: rawBody?.message,
+  };
 }
 
 export const api = {

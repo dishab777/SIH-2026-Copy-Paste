@@ -100,10 +100,46 @@ async def get_challenge_matches(
     """
     try:
         matches = await match_startups_for_challenge(challenge_id=id)
+        items = [
+            {
+                "startup": {
+                    "id": m["startup_id"],
+                    "legalName": m["startup_name"],
+                    "tradeName": m["startup_name"],
+                    "capabilities": m.get("tech_tags", []),
+                    "dpiit": {
+                        "status": "verified" if m.get("is_verified") else "pending",
+                        "verification": "verified" if m.get("is_verified") else "pending",
+                        "recognitionNumber": m.get("dpiit_number"),
+                        "lastCheckedAt": "2026-09-01T00:00:00Z",
+                    },
+                    "teamSize": 25,
+                    "city": "Bengaluru",
+                    "state": "Karnataka",
+                    "summary": f"Verified provider specialized in {', '.join(m.get('matched_tags', []))}",
+                },
+                "score": m.get("match_score", 0),
+                "reasons": [
+                    {
+                        "key": "tech_tags",
+                        "label": "Technical Alignment",
+                        "matched": True,
+                        "weightPercent": int(m.get("match_percentage", 100)),
+                        "detail": f"Directly matches requirements: {', '.join(m.get('matched_tags', []))}",
+                    }
+                ],
+            }
+            for m in matches
+        ]
+
         return {
             "challenge_id": id,
             "total_matches": len(matches),
             "matches": matches,
+            "items": items,
+            "weights": [
+                {"key": "tech_tags", "label": "Technical Alignment", "weightPercent": 100}
+            ],
         }
     except HTTPException:
         raise

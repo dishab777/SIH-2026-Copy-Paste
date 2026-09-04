@@ -18,8 +18,10 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    userId: Optional[str] = None
+    role: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
@@ -101,8 +103,6 @@ async def register(payload: RegisterRequest):
     access_token = session.access_token if session else ""
     refresh_token = session.refresh_token if session else None
 
-    # If Supabase email confirmation is enabled and no immediate session returned,
-    # attempt sign-in or return placeholder instruction
     if not access_token:
         try:
             login_res = supabase.auth.sign_in_with_password({
@@ -126,8 +126,62 @@ async def register(payload: RegisterRequest):
 @router.post("/login", response_model=AuthResponse)
 async def login(payload: LoginRequest):
     """
-    Authenticates a user with Supabase Auth and returns JWT token + user profile.
+    Authenticates a user either with email/password via Supabase Auth
+    OR via demonstration role/userId selection.
     """
+    # 1. Demonstration / Quick Role sign-in (used by frontend role-picker)
+    if not payload.password and (payload.role or payload.userId):
+        raw_role = (payload.role or "department_officer").lower()
+        role_mapping = {
+            "startup": "STARTUP",
+            "department_officer": "GOVERNMENT",
+            "department_admin": "GOVERNMENT",
+            "procurement_officer": "GOVERNMENT",
+            "evaluator": "EVALUATOR",
+            "validator": "EVALUATOR",
+            "pmu": "GOVERNMENT",
+            "public": "GOVERNMENT",
+        }
+        backend_role = role_mapping.get(raw_role, "GOVERNMENT")
+        user_id = payload.userId or f"usr-{raw_role}"
+        demo_token = f"demo_{backend_role.lower()}_{user_id}"
+
+        role_titles = {
+            "startup": "Kavita Rao (CTO, AeroSense)",
+            "department_officer": "Rajesh Kumar (Director, Municipal Health)",
+            "department_admin": "Sunita Verma (Joint Secretary)",
+            "procurement_officer": "Amit Sharma (Chief Procurement Officer)",
+            "evaluator": "Dr. Aris Thorne (IIT Delhi, Evaluator)",
+            "validator": "Meera Sen (Independent Validator)",
+            "pmu": "Programme Officer (PMU Unit)",
+        }
+
+        user_info = {
+            "id": user_id,
+            "name": role_titles.get(raw_role, f"Demo {raw_role.capitalize()}"),
+            "full_name": role_titles.get(raw_role, f"Demo {raw_role.capitalize()}"),
+            "role": raw_role,
+            "email": f"{raw_role}@nexus.gov.in",
+            "department_name": "Ministry of Urban Innovation" if backend_role == "GOVERNMENT" else None,
+            "dpiit_number": "DPIIT-IN-2024-8849" if backend_role == "STARTUP" else None,
+            "tech_tags": ["AI/ML", "IoT", "Cloud", "CleanTech"],
+            "is_verified": True,
+        }
+
+        return AuthResponse(
+            access_token=demo_token,
+            token_type="bearer",
+            refresh_token=None,
+            user=user_info,
+        )
+
+    # 2. Standard email + password authentication with Supabase
+    if not payload.email or not payload.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email and password are required for standard login",
+        )
+
     supabase = get_supabase_client()
     admin_supabase = get_supabase_admin_client()
 
@@ -165,15 +219,120 @@ async def login(payload: LoginRequest):
         refresh_token=auth_res.session.refresh_token,
         user={
             "id": auth_res.user.id,
+            "name": profile_data.get("full_name") or auth_res.user.email,
             "email": auth_res.user.email,
             **profile_data,
         },
     )
 
 
-@router.get("/me", response_model=CurrentUser)
-async def get_me(current_user: CurrentUser = Depends(get_current_user)):
+@router.get("/me")
+async def get_me(current_user: Optional[CurrentUser] = Depends(get_optional_current_user)):
     """
-    Retrieves the currently authenticated user's profile.
+    Retrieves current user session. If unauthenticated, returns guest/public status
+    with 200 OK so the frontend session bootstrap loads seamlessly.
     """
-    return current_user
+    if not current_user:
+        return {
+            "user": None,
+            "role": "public",
+            "department": None,
+            "startup": None,
+        }
+
+    return {
+        "user": {
+            "id": current_user.id,
+            "name": current_user.full_name,
+            "initials": "".join([part[0].upper() for part in current_user.full_name.split()[:2]]) or "US",
+            "role": current_user.role.value.lower(),
+            "email": current_user.email,
+            "department_name": current_user.department_name,
+            "dpiit_number": current_user.dpiit_number,
+            "tech_tags": current_user.tech_tags,
+            "is_verified": current_user.is_verified,
+        },
+        "role": current_user.role.value.lower(),
+        "department": {
+            "id": "dep-1",
+            "name": current_user.department_name or "Department of Innovation",
+            "shortName": "DOI",
+        } if current_user.department_name or current_user.role == UserRole.GOVERNMENT else None,
+        "startup": {
+            "id": current_user.id,
+            "legalName": current_user.full_name,
+            "tradeName": current_user.full_name,
+        } if current_user.role == UserRole.STARTUP else None,
+    }
+
+
+@router.get("/accounts")
+async def get_accounts():
+    """
+    Returns available demonstration accounts across system roles for quick sign-in.
+    """
+    return [
+        {
+            "id": "usr-startup-1",
+            "name": "Kavita Rao",
+            "initials": "KR",
+            "email": "kavita@aerosense.in",
+            "role": "startup",
+            "title": "CTO & Co-founder",
+            "org": "AeroSense Technologies Pvt Ltd",
+        },
+        {
+            "id": "usr-dept-officer",
+            "name": "Rajesh Kumar",
+            "initials": "RK",
+            "email": "rajesh.kumar@gov.in",
+            "role": "department_officer",
+            "title": "Director (Operations)",
+            "org": "Department of Water Resources & Sanitation",
+        },
+        {
+            "id": "usr-dept-admin",
+            "name": "Sunita Verma",
+            "initials": "SV",
+            "email": "sunita.verma@gov.in",
+            "role": "department_admin",
+            "title": "Joint Secretary",
+            "org": "Ministry of Housing and Urban Affairs",
+        },
+        {
+            "id": "usr-procurement",
+            "name": "Amit Sharma",
+            "initials": "AS",
+            "email": "amit.sharma@gov.in",
+            "role": "procurement_officer",
+            "title": "Chief Procurement Officer",
+            "org": "Central Public Procurement Portal",
+        },
+        {
+            "id": "usr-evaluator-1",
+            "name": "Dr. Aris Thorne",
+            "initials": "AT",
+            "email": "aris.thorne@iitd.ac.in",
+            "role": "evaluator",
+            "title": "Professor & Technical Chair",
+            "org": "Indian Institute of Technology Delhi",
+        },
+        {
+            "id": "usr-validator-1",
+            "name": "Meera Sen",
+            "initials": "MS",
+            "email": "meera.sen@audit.org",
+            "role": "validator",
+            "title": "Lead Quality Auditor",
+            "org": "National Quality & Standards Council",
+        },
+        {
+            "id": "usr-pmu-1",
+            "name": "Vikas Patel",
+            "initials": "VP",
+            "email": "vikas.patel@pmu.gov.in",
+            "role": "pmu",
+            "title": "Senior Programme Manager",
+            "org": "National Innovation Mission PMU",
+        },
+    ]

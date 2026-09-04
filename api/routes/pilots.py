@@ -315,3 +315,15 @@ async def list_pilots(current_user: CurrentUser = Depends(get_current_user)):
 
     res = query.order("created_at", desc=True).execute()
     return res.data or []
+
+
+@router.get("/{pilot_id}/validation")
+async def get_pilot_validation(
+    pilot_id: str,
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Alias route for Scale-Up Readiness report directly under pilot domain.
+    """
+    from api.routes.validation import get_scale_up_readiness_report
+    return await get_scale_up_readiness_report(pilot_id=pilot_id, current_user=current_user)
