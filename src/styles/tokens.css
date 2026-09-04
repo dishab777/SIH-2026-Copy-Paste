@@ -1,0 +1,143 @@
+/*
+ * PRAYOG design tokens. Single source of truth.
+ * Nothing else in the codebase may declare a colour, a radius or a shadow.
+ *
+ * ONE palette. One hue family, used the same way on every route.
+ *
+ * The product used to carry two: a paper set for working screens and a
+ * separate deep set for public ones. The ground changed underneath you as you
+ * navigated, which reads as a fault rather than a scheme. So the deep ground is
+ * now the approving officer's green ink at full strength — the same hue as
+ * --verify, taken down to near-black — and saffron is the one warm accent,
+ * meaning the same thing everywhere: open, waiting, yours to act on.
+ *
+ * Green, off-white and saffron. It is the palette this subject already owns.
+ *
+ * Contrast, measured against --sheet (#FCFBF7):
+ *   --ink        16.7 : 1     --verify   7.7 : 1
+ *   --ink-soft    6.2 : 1     --hold     5.8 : 1
+ *                             --seal     8.1 : 1
+ * Against --deep (#08170F):
+ *   --deep-ink   17.2 : 1     --saffron 10.2 : 1
+ *   --deep-dim    7.1 : 1     --signal  11.4 : 1
+ */
+:root {
+  /* ------------------------------------------------------------ paper
+   * Where the work is done: reading a gate decision, signing a milestone,
+   * reconciling a payment. Warm, ruled, quiet.
+   */
+  --ink: #1a1d1a;
+  --ink-soft: #5c6259;
+  --ledger: #eceadf;
+  --sheet: #fcfbf7;
+  --rule: #c9c4b4;
+
+  --verify: #1f5c3d;
+  --hold: #8a5a00;
+  --seal: #96201c;
+
+  --verify-wash: #e3ece5;
+  --hold-wash: #f5eeda;
+  --seal-wash: #f5e5e1;
+
+  /* ------------------------------------------------------------- deep
+   * The same green, at full strength. Every masthead, every top bar and every
+   * landing band in the product sits on this one ground, so the colour never
+   * depends on which page you happen to be looking at.
+   */
+  --deep: #08170f;
+  --deep-2: #0e2418;
+  --deep-3: #143024;
+  --deep-ink: #f2f7f3;
+  --deep-dim: #86a894;
+  --deep-rule: #1f4130;
+
+  /* The accents that live on the deep ground.
+   * Saffron: open, waiting, yours. Signal: cleared, measured, paid.
+   * Seal-lit: refused — the same red as --seal, raised until it can be read on
+   * near-black, exactly as --signal is --verify raised. Against --deep it
+   * measures 6.7 : 1; --seal itself measures under 2 there and vanishes. */
+  --saffron: #ffb03a;
+  --signal: #4ee39f;
+  --seal-lit: #ff6b6b;
+
+  /*
+   * The four chip grounds on deep. Tailwind cannot compute an alpha from a
+   * colour declared as `var(--x)` — `bg-signal/15` emits nothing at all — so a
+   * translucent tint has to be a token of its own rather than a modifier.
+   */
+  --signal-veil: rgba(78, 227, 159, 0.14);
+  --saffron-veil: rgba(255, 176, 58, 0.14);
+  --seal-veil: rgba(255, 107, 107, 0.16);
+
+  /*
+   * Saffron again, mixed dark enough to be read as text on a sheet. The lit
+   * cut above measures 1.9 : 1 there and is hopeless for a label.
+   * Against --sheet: 5.3 : 1.
+   */
+  --saffron-ink: #9a5b00;
+
+  /* ------------------------------------------------------------- depth
+   * Light rakes from the upper left, so a raised face catches it on top and
+   * casts below. Every elevation in the product is one of these five.
+   */
+  --elev-rule: 0 1px 0 var(--rule);
+  --elev-sheet: 0 1px 0 rgba(26, 29, 26, 0.05), 0 1px 2px rgba(26, 29, 26, 0.05);
+  --elev-raise: 0 2px 4px rgba(8, 23, 15, 0.06), 0 8px 20px -6px rgba(8, 23, 15, 0.14);
+  --elev-lift: 0 4px 8px rgba(8, 23, 15, 0.08), 0 18px 40px -12px rgba(8, 23, 15, 0.22);
+  --elev-float: 0 8px 16px rgba(8, 23, 15, 0.1), 0 32px 64px -16px rgba(8, 23, 15, 0.3);
+
+  /* Glow, used only on the deep ground and only on the accent that means something. */
+  --glow-saffron: 0 0 0 1px rgba(255, 176, 58, 0.34), 0 12px 40px -8px rgba(255, 176, 58, 0.42);
+  --glow-signal: 0 0 0 1px rgba(78, 227, 159, 0.3), 0 12px 40px -8px rgba(78, 227, 159, 0.34);
+
+  /* The wash behind a modal. The deep ground at a third strength, so a dialog
+     sits in the same world as the bar above it. */
+  --scrim: rgba(8, 23, 15, 0.42);
+
+  --rule-close: 1px solid var(--ink);
+  --rule-total: 3px double var(--ink);
+
+  /*
+   * Nothing in this product is a rectangle any more.
+   *
+   * The old argument was that government stationery is guillotined, so a sheet
+   * should be square. It is true of paper and wrong on a screen: a page of
+   * square panels reads as a spreadsheet of boxes, and the eye cannot tell a
+   * container from a divider. Every surface a reader picks up, compares or
+   * scrolls is rounded; only a ruled row inside a ledger stays square, because
+   * a row is not an object.
+   */
+  --radius-control: 10px;
+  --radius-sheet: 14px;
+  --radius-block: 20px;
+  --radius-pill: 999px;
+
+  /*
+   * The page wash. One gradient, identical on every route in every portal, so
+   * the ground under the work never changes as you navigate — it is the same
+   * two lights that fall on the deep mastheads, at a tenth of the strength.
+   */
+  --wash:
+    radial-gradient(1180px 540px at 6% -8%, rgba(31, 92, 61, 0.13), transparent 60%),
+    radial-gradient(1020px 480px at 98% 0%, rgba(255, 176, 58, 0.11), transparent 58%),
+    radial-gradient(880px 720px at 52% 112%, rgba(31, 92, 61, 0.08), transparent 62%);
+
+  /*
+   * A panel is translucent enough for the wash to show through it. Not a glass
+   * blur — 145 blurred surfaces on a dense table screen is a compositor layer
+   * each. The colour comes through; the cost does not.
+   */
+  --sheet-veil: color-mix(in srgb, var(--sheet) 92%, transparent);
+  --ledger-veil: color-mix(in srgb, var(--ledger) 88%, transparent);
+
+  --dock-width: 340px;
+  --rail-width: 208px;
+  --shell-max: 1440px;
+  --gutter: 24px;
+
+  /* The marginal band printed down the left edge of a noting sheet. */
+  --margin-rule: 3px;
+
+  --focus-ring: 0 0 0 2px var(--sheet), 0 0 0 4px var(--verify);
+}

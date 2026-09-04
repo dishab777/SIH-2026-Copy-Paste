@@ -1,0 +1,1291 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    /*
+     * An in-page jump reads as travel rather than teleportation, and stops
+     * clear of the sticky bar rather than under it. Sections set their own
+     * scroll-margin; this is the floor for anything that does not.
+     */
+    scroll-behavior: smooth;
+    scroll-padding-top: 88px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    margin: 0;
+    /*
+     * The constant. Every route in every portal sits on this one gradient —
+     * fixed to the viewport, so it does not travel with the content and does
+     * not repaint per section. It is the reason a payments ledger and the
+     * demand board feel like the same product.
+     */
+    background-color: var(--ledger);
+    background-image: var(--wash);
+    background-attachment: fixed;
+    color: var(--ink);
+    font-family: 'Anek Latin', 'Anek Devanagari', 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 24px;
+    font-variant-numeric: normal;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Anek is variable across width 75-125 and weight 100-800, and the display
+   * cut uses that range rather than leaving it on the shelf: condensed and
+   * heavy, the way a header rule is set on a sanction order. It is reserved
+   * for page titles and the subject line of a case. Nothing else is set in it.
+   */
+  .type-display,
+  .type-title {
+    font-family: 'Anek Latin', 'Anek Devanagari', sans-serif;
+    font-stretch: 80%;
+    font-weight: 700;
+    letter-spacing: -0.012em;
+  }
+
+  .type-display {
+    /* Four lines of 44px headline is most of a phone screen. The notice keeps
+       its authority at 32px there and grows back on a desk. */
+    font-size: clamp(32px, 5.2vw, 44px);
+    line-height: 1.06;
+  }
+
+  /*
+   * The register face. Reserved for identifiers a person reads out or copies
+   * down - a case number, a payment reference, a checksum. Money and measured
+   * quantities are NOT set in it: those are computed with, not quoted, and
+   * they stay in Anek's tabular figures where they align in a column.
+   */
+  .type-register {
+    font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'SF Mono', Menlo, 'Roboto Mono',
+      'Liberation Mono', monospace;
+    /*
+     * Family and fit only, never size. Setting a font-size here silently beat
+     * every `text-*` class used alongside it — a figure asking for 24px was
+     * coming out at 13.8px. A monospace face runs large next to Anek, so the
+     * optical correction is applied through `size-adjust` on the fallback
+     * stack's metrics rather than by overriding the caller's size.
+     */
+    font-size-adjust: 0.52;
+    letter-spacing: 0.01em;
+    font-variant-ligatures: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  figure,
+  blockquote,
+  dl,
+  dd {
+    margin: 0;
+  }
+
+  ol,
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Data and money are always tabular so columns of figures align. */
+  .tnum,
+  table,
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .font-doc,
+  .type-doc {
+    font-family: 'Tiro Devanagari Hindi', Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 30px;
+    font-weight: 400;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--verify);
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  /* Never remove focus without replacing it. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  ::selection {
+    background: var(--verify-wash);
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer components {
+  /*
+   * A sheet is paper clipped to the board: a soft edge, a rounded corner, and
+   * enough translucency that the page wash tints it. Two of the three used to
+   * be absent — `.sheet-flat` was square and opaque, and it is used in 145
+   * places, which is most of what made every screen read as a grid of boxes.
+   */
+  .sheet,
+  .sheet-flat {
+    background-color: var(--sheet-veil);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--elev-sheet);
+  }
+
+  /*
+   * Round the corner children with the parent rather than clipping the parent.
+   * `overflow: hidden` here would make every sheet a scroll container and break
+   * the sticky headers and sidebars that live inside them.
+   */
+  .sheet > :first-child,
+  .sheet-flat > :first-child {
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+
+  .sheet > :last-child,
+  .sheet-flat > :last-child {
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+  }
+
+  /*
+   * A panel that wants the wash to move behind it — a sticky index, a popover,
+   * anything that floats over content. Real blur, and only where it is cheap.
+   */
+  .glass {
+    background-color: color-mix(in srgb, var(--sheet) 78%, transparent);
+    backdrop-filter: saturate(1.3) blur(14px);
+    -webkit-backdrop-filter: saturate(1.3) blur(14px);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--elev-raise);
+  }
+
+  /* ---------------------------------------------------------- noting strip
+   * The signature device. A government noting sheet is printed with a ruled
+   * margin down its left edge, and every observation is written against it,
+   * signed and dated, in the ink of the act: green when an officer clears
+   * something, red when they refuse, carbon when it is only a note.
+   *
+   * Everywhere a decision, an override, an observation or an event appears in
+   * this product, it hangs off this margin. One device, one meaning.
+   */
+  .noting {
+    position: relative;
+    padding-left: 24px;
+  }
+
+  .noting::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--rule);
+  }
+
+  /*
+   * The page-level margin. A noting sheet is ruled once, down the whole page,
+   * and every heading on it begins at the same edge past that rule. Authority
+   * — the clause a decision rests on, the officer who wrote it — is set in the
+   * margin itself, so it sits beside the claim without interrupting it.
+   */
+  .noting-page {
+    position: relative;
+  }
+
+  @media (min-width: 1024px) {
+    .noting-page {
+      padding-left: 152px;
+    }
+
+    .noting-page::before {
+      content: '';
+      position: absolute;
+      left: 132px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--rule);
+    }
+
+    .noting-margin {
+      position: absolute;
+      left: -152px;
+      width: 132px;
+      padding-right: 16px;
+      text-align: right;
+    }
+
+    /*
+     * The cover and the action bar are not part of the noting sheet — the sheet
+     * is clipped inside the cover — so they span the full column and the margin
+     * rule starts below them.
+     */
+    .noting-full {
+      margin-left: -152px;
+    }
+  }
+
+  /* Below the fold-out width the margin simply precedes what it annotates. */
+  @media (max-width: 1023.98px) {
+    .noting-margin {
+      display: block;
+      margin-bottom: 8px;
+      padding-left: 8px;
+      border-left: 2px solid var(--rule);
+    }
+  }
+
+  .noting-entry {
+    position: relative;
+  }
+
+  /* The mark on the margin. Its colour is the ink the entry was written in. */
+  .noting-entry::before {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 9px;
+    width: var(--margin-rule);
+    height: 12px;
+    background: currentColor;
+  }
+
+  .noting-entry[data-ink='verify'] {
+    color: var(--verify);
+  }
+  .noting-entry[data-ink='seal'] {
+    color: var(--seal);
+  }
+  .noting-entry[data-ink='hold'] {
+    color: var(--hold);
+  }
+  .noting-entry[data-ink='note'] {
+    color: var(--rule);
+  }
+
+  /*
+   * The initials an officer writes beside a note. Boxed, because on paper they
+   * are written into a ruled box on the margin, and monospaced because they are
+   * an identifier rather than a name.
+   */
+  /*
+   * Headings inherit the condensed cut, easing back towards normal width as
+   * they get smaller: a condensed 44px title reads as a stamped header, a
+   * condensed 18px subhead just reads as cramped.
+   */
+  .text-display,
+  .text-h1 {
+    font-stretch: 80%;
+    letter-spacing: -0.012em;
+  }
+
+  .text-h2 {
+    font-stretch: 87%;
+    letter-spacing: -0.008em;
+  }
+
+  .text-h3 {
+    font-stretch: 94%;
+    letter-spacing: -0.004em;
+  }
+
+  /*
+   * The name of a field on a printed form: small, letterspaced, upper case.
+   * Only for labels that sit above or beside a value. Never for a sentence.
+   */
+  .field-label {
+    text-transform: uppercase;
+    letter-spacing: 0.075em;
+    font-weight: 600;
+    font-size: 10px;
+    line-height: 14px;
+    color: var(--ink-soft);
+  }
+
+  .monogram {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 18px;
+    padding: 0 3px;
+    border: 1px solid currentColor;
+    font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'SF Mono', Menlo, monospace;
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+  }
+
+  /*
+   * A ruled row inside a ledger stays square. A row is not an object you pick
+   * up and compare — it is a line on a page, and rounding it turns a table into
+   * a stack of cards. The sheet around it is what rounds.
+   */
+  .ledger-row {
+    border-radius: 0;
+    border-bottom: 1px solid var(--rule);
+    transition: background-color var(--swift, 160ms) var(--ease, ease);
+  }
+
+  .ledger-row:last-child {
+    border-bottom: 0;
+  }
+
+  /* A row lights under the pointer, so a long column stays trackable. */
+  .ledger-row:hover {
+    background-color: color-mix(in srgb, var(--verify) 5%, transparent);
+  }
+
+  .rule-close {
+    border-top: 1px solid var(--ink);
+  }
+
+  .rule-total {
+    border-top: 3px double var(--ink);
+  }
+
+  /*
+   * The primary action, in the ink an officer clears in. A lit top edge and a
+   * shadow in its own hue, so it sits on the page as an object you press
+   * rather than as a green rectangle — and it deepens rather than lightens on
+   * hover, which is what a physical key does.
+   */
+  .btn-primary {
+    background-image: linear-gradient(180deg, #2a7a52, var(--verify));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 1px 2px rgba(8, 23, 15, 0.2),
+      0 8px 20px -8px rgba(31, 92, 61, 0.55);
+  }
+
+  .btn-primary:hover {
+    background-image: linear-gradient(180deg, var(--verify), #16452d);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 2px 4px rgba(8, 23, 15, 0.24),
+      0 12px 26px -8px rgba(31, 92, 61, 0.6);
+  }
+
+  .btn-primary:active {
+    background-image: linear-gradient(180deg, #16452d, #16452d);
+    box-shadow: inset 0 2px 5px rgba(8, 23, 15, 0.35);
+  }
+
+  .skip-link {
+    position: absolute;
+    left: 8px;
+    top: -64px;
+    z-index: 100;
+    background: var(--sheet);
+    border: 1px solid var(--ink);
+    padding: 8px 16px;
+    border-radius: var(--radius-control);
+    transition: top 120ms ease;
+  }
+
+  .skip-link:focus {
+    top: 8px;
+  }
+
+  /* The one expressive animation in PRAYOG. */
+  @keyframes seal-stamp {
+    0% {
+      opacity: 0;
+      transform: scale(1.12) rotate(-4deg);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(0.985) rotate(-0.6deg);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) rotate(-1.5deg);
+    }
+  }
+
+  .seal-stamp-in {
+    animation: seal-stamp 220ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
+  @keyframes node-fill {
+    from {
+      box-shadow: inset 0 0 0 0 currentColor;
+    }
+    to {
+      box-shadow: inset 0 0 0 12px currentColor;
+    }
+  }
+
+  .gate-node-fill {
+    animation: node-fill 220ms ease-out both;
+  }
+}
+
+/* Skeletons breathe rather than shimmer: one keyframe for the whole app. */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.skeleton-block {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .seal-stamp-in {
+    animation: none;
+    transform: rotate(-1.5deg);
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ print
+   A gate decision, a challenge document and an audit trail all end up in a
+   physical file. What prints is the record: the navigation, the controls and
+   the working panels come off, the rules and status washes stay because they
+   carry meaning, and the page says on its face that it is a demonstration. */
+@media print {
+  :root {
+    --ledger: #fff;
+  }
+
+  body {
+    background: #fff;
+    font-size: 10.5pt;
+  }
+
+  /* Chrome and controls are not part of the record. */
+  .no-print,
+  .skip-link,
+  header nav,
+  nav[aria-label='Section'],
+  nav[aria-label='Portal'],
+  footer,
+  [role='dialog'],
+  [aria-live='polite'].fixed {
+    display: none !important;
+  }
+
+  /* Controls come off — except the gate ladder, which is the case history and
+     happens to be built from buttons. It prints as the record it is. */
+  button:not(nav[aria-label='Gate ladder'] button) {
+    display: none !important;
+  }
+
+  nav[aria-label='Gate ladder'] button {
+    cursor: default;
+  }
+
+  /* Scroll containers print in full rather than clipped to the viewport. */
+  .scroll-quiet,
+  [class*='overflow-'] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* A sticky action bar has nothing to stick to on paper. */
+  .sticky,
+  .fixed {
+    position: static !important;
+  }
+
+  /* The washes and rules are the status. Without them the page loses its meaning. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  main {
+    max-width: none !important;
+  }
+
+  /* Never break a decision, a milestone or a ledger row across two sheets. */
+  section,
+  article,
+  tr,
+  li {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  /* A printed page loses the footer that says what this build is. */
+  main::after {
+    content: 'PRAYOG demonstration build — government integrations shown here are mock providers. Not a legal, financial or procurement record.';
+    display: block;
+    margin-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid var(--rule);
+    font-size: 8pt;
+    color: var(--ink-soft);
+  }
+}
+
+/* Scrollbars inside docked panels stay quiet. */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+.scroll-quiet::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-quiet::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   THE DEEP GROUND
+   Every masthead in the product — public landing or working portal — sits on
+   this. It is --verify taken down to near-black, so it is the same green as an
+   approving officer's ink rather than a second palette bolted on.
+   ========================================================================== */
+
+.deep {
+  background: var(--deep);
+  color: var(--deep-ink);
+}
+
+/* The ground the hero sits on: a deep field with two distant light sources and
+   a surveyor's grid receding into it. */
+.deep-field {
+  position: relative;
+  isolation: isolate;
+  /* Colour first, gradients over it. The shorthand would reset the colour to
+     transparent, which is how the ledger underneath used to show through. */
+  background-color: var(--deep);
+  background-image:
+    radial-gradient(1100px 580px at 14% -12%, rgba(78, 227, 159, 0.16), transparent 62%),
+    radial-gradient(900px 520px at 86% 4%, rgba(255, 176, 58, 0.14), transparent 60%),
+    linear-gradient(180deg, var(--deep) 0%, var(--deep-2) 58%, var(--deep) 100%);
+  overflow: hidden;
+}
+
+/* The grid is a plan drawing seen in perspective — the district the problems
+   are actually in, not an abstract mesh. */
+.deep-field::before {
+  content: '';
+  position: absolute;
+  /*
+   * Bounded on purpose. Spreading this box past the viewport and then rotating
+   * it in perspective produced a composited layer several times the size of the
+   * screen, which cost more to rasterise than the whole rest of the page. The
+   * parent already clips, so the grid only has to cover what is visible.
+   */
+  inset: 42% 0 0 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgba(134, 168, 148, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(134, 168, 148, 0.16) 1px, transparent 1px);
+  background-size: 72px 72px;
+  transform: perspective(760px) rotateX(64deg) scale(1.9);
+  transform-origin: 50% 0%;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.deep-hairline {
+  border-color: var(--deep-rule);
+}
+
+/* ---------------------------------------------------------- the case file
+ * The signature, and the one place the product spends its boldness.
+ *
+ * It replaces an abstract 3D stair that read as a broken zigzag rather than as
+ * anything in this subject's world. What a case actually is here is a file:
+ * a cover, seven ruled gate entries down the page, the cleared ones stamped,
+ * the open one flagged. Drawing the real object says "from challenge to
+ * contract" in a way a diagram of floating blocks cannot.
+ */
+/* The sheets underneath sit down and to the right, so the box reserves that
+   room rather than letting them push past its own edge. */
+.file {
+  position: relative;
+  padding: 0 22px 22px 0;
+  perspective: 1400px;
+  perspective-origin: 60% 40%;
+}
+
+.file-body {
+  position: relative;
+  border-radius: var(--radius-block);
+  background-color: var(--deep-2);
+  background-image: linear-gradient(168deg, var(--deep-3), var(--deep-2) 58%, var(--deep-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    var(--elev-float);
+  transform: rotateX(var(--file-x, 5deg)) rotateY(var(--file-y, -10deg)) rotateZ(0.4deg);
+  transform-style: preserve-3d;
+  transition: transform var(--arrive) var(--ease);
+  will-change: transform;
+}
+
+/* The thickness of the stack underneath. Two sheets is enough to say "file". */
+.file-body::before,
+.file-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-block);
+  background: var(--deep-2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  z-index: -1;
+}
+.file-body::before {
+  transform: translateZ(-10px) translate(9px, 9px);
+  opacity: 0.7;
+}
+.file-body::after {
+  transform: translateZ(-20px) translate(18px, 18px);
+  opacity: 0.4;
+}
+
+/* The tag on the top edge, the way a physical file carries its number. */
+.file-tab {
+  position: absolute;
+  top: -13px;
+  left: 24px;
+  transform: translateZ(14px);
+  border-radius: var(--radius-pill);
+  background: var(--saffron);
+  box-shadow: var(--glow-saffron);
+}
+
+/* One gate. Cleared rows recede, the open row lifts towards the reader. */
+.file-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--deep-rule);
+  transition:
+    background-color var(--settle) var(--ease),
+    transform var(--settle) var(--ease);
+}
+
+.file-row[data-state='cleared'] {
+  color: var(--deep-dim);
+}
+
+.file-row[data-state='open'] {
+  background: linear-gradient(90deg, rgba(255, 176, 58, 0.2), rgba(255, 176, 58, 0.03));
+  color: var(--deep-ink);
+  transform: translateZ(18px);
+  box-shadow: inset 3px 0 0 var(--saffron);
+}
+
+.file-row[data-state='ahead'] {
+  color: var(--deep-dim);
+  opacity: 0.6;
+}
+
+/* The seal on a cleared gate: a ring, not a tick, because what was recorded is
+   a signature against a date rather than a ticked box. */
+.file-seal {
+  display: inline-flex;
+  height: 17px;
+  width: 17px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--signal);
+  color: var(--signal);
+}
+
+.file-open-dot {
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  background: var(--saffron);
+  animation: file-open 2.4s ease-in-out infinite;
+}
+
+@keyframes file-open {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 176, 58, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(255, 176, 58, 0);
+  }
+}
+
+/* The rows are dealt onto the page in order, because the gates happen in order. */
+@keyframes file-deal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.file-deal {
+  animation: file-deal 420ms var(--ease) both;
+}
+
+/* ---------------------------------------------------------- extruded slab
+ * The card of the deep world. A face with a lit edge and a hard shadow under
+ * it, so it reads as a solid lifted off the ground rather than a rectangle.
+ */
+.slab {
+  position: relative;
+  border-radius: var(--radius-block);
+  background-color: var(--deep-2);
+  background-image: linear-gradient(160deg, var(--deep-3), var(--deep-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    var(--elev-float);
+  transition:
+    transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1),
+    box-shadow 260ms ease;
+}
+
+a.slab:hover,
+button.slab:hover,
+.slab-hover:hover {
+  transform: translateY(-4px);
+}
+
+/* The accent a block is about, carried as a lit top edge. There are two. */
+.slab[data-accent='saffron'] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 176, 58, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    var(--elev-float);
+}
+.slab[data-accent='signal'] {
+  box-shadow:
+    inset 0 1px 0 rgba(78, 227, 159, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    var(--elev-float);
+}
+
+/* ------------------------------------------------------------- 3D column
+ * The bar of the deep world: an extruded column, not a flat rectangle.
+ */
+.column3d {
+  position: relative;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--col-lit), var(--col));
+  box-shadow: inset -6px 0 0 rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: height 700ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.column3d::after {
+  /* The lit cap, seen from slightly above. */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -5px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--col-lit);
+  filter: brightness(1.25);
+}
+
+/* ---------------------------------------------------------------- ticker */
+.ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker-run 46s linear infinite;
+}
+
+@keyframes ticker-run {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.ticker-wrap:hover .ticker {
+  animation-play-state: paused;
+}
+
+/* ------------------------------------------------------------- live dot */
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--verify);
+  box-shadow: 0 0 0 0 rgba(31, 92, 61, 0.5);
+  animation: live 2.4s ease-out infinite;
+}
+
+@keyframes live {
+  0% {
+    box-shadow: 0 0 0 0 rgba(31, 92, 61, 0.45);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px rgba(31, 92, 61, 0);
+  }
+}
+
+/* ------------------------------------------------------ scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 620ms cubic-bezier(0.2, 0.9, 0.3, 1),
+    transform 620ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Sequenced, so a row of blocks lands one after another rather than all at once. */
+.reveal[data-delay='1'] {
+  transition-delay: 80ms;
+}
+.reveal[data-delay='2'] {
+  transition-delay: 160ms;
+}
+.reveal[data-delay='3'] {
+  transition-delay: 240ms;
+}
+.reveal[data-delay='4'] {
+  transition-delay: 320ms;
+}
+.reveal[data-delay='5'] {
+  transition-delay: 400ms;
+}
+
+/* --------------------------------------------------------- deep type */
+.deep a:focus-visible,
+.deep button:focus-visible,
+.deep [tabindex]:focus-visible {
+  outline: 2px solid var(--saffron);
+  outline-offset: 3px;
+}
+
+/* Nothing in the deep world moves for a reader who asked for stillness. */
+@media (prefers-reduced-motion: reduce) {
+  .file-open-dot,
+  .file-deal,
+  .ticker,
+  .live-dot {
+    animation: none !important;
+  }
+
+  .file-body {
+    transition: none;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   FULL BLEED
+   A landing section has to reach the edges of the window, not the edges of the
+   1440px column the rest of the product sits in. Margin rather than 100vw, so
+   it never counts the scrollbar and never produces a horizontal scroll.
+   ========================================================================== */
+.full-bleed {
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
+
+/*
+ * The clip has to sit on the shell root, which is the only element in the
+ * product as wide as the window. On the page wrapper it clipped the very bleed
+ * it was meant to protect, which is why every landing band stopped short of
+ * the window edge with a strip of ledger showing beside it.
+ *
+ * "clip" and not "hidden": "hidden" would make the top bar's sticky
+ * positioning stop working.
+ */
+.app-root {
+  overflow-x: clip;
+  /* Transparent on purpose: the wash lives on the body, fixed to the viewport,
+     and anything opaque here would cover it. */
+  background: transparent;
+}
+
+/* ==========================================================================
+   MOTION
+   One easing curve and three durations for the whole product, so a hover, a
+   panel opening and a page arriving all feel like the same hand.
+   ========================================================================== */
+:root {
+  --ease: cubic-bezier(0.22, 0.85, 0.3, 1);
+  --swift: 160ms;
+  --settle: 280ms;
+  --arrive: 520ms;
+}
+
+.swift {
+  transition:
+    transform var(--swift) var(--ease),
+    box-shadow var(--swift) var(--ease),
+    background-color var(--swift) var(--ease),
+    border-color var(--swift) var(--ease),
+    color var(--swift) var(--ease);
+}
+
+.settle {
+  transition:
+    transform var(--settle) var(--ease),
+    box-shadow var(--settle) var(--ease),
+    opacity var(--settle) var(--ease);
+}
+
+/* A card lifts towards the reader and its shadow deepens with it. */
+.lift-on-hover {
+  transition:
+    transform var(--settle) var(--ease),
+    box-shadow var(--settle) var(--ease),
+    border-color var(--settle) var(--ease);
+}
+
+.lift-on-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--elev-lift);
+  border-color: var(--verify);
+}
+
+.lift-on-hover:active {
+  transform: translateY(-1px);
+}
+
+/* The accent rail across the head of a card draws itself in on hover, left to
+   right, the way a pen underlines something. */
+.rail {
+  position: relative;
+  overflow: hidden;
+}
+
+.rail::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  background: var(--verify);
+  transform: scaleX(0.18);
+  transform-origin: left center;
+  transition: transform var(--arrive) var(--ease);
+}
+
+.group:hover .rail::after,
+.rail:hover::after {
+  transform: scaleX(1);
+}
+
+/* A pressable control that answers the pointer without moving the layout. */
+.press {
+  transition:
+    transform var(--swift) var(--ease),
+    box-shadow var(--swift) var(--ease),
+    background-color var(--swift) var(--ease),
+    border-color var(--swift) var(--ease),
+    color var(--swift) var(--ease);
+}
+
+.press:hover {
+  transform: translateY(-1px);
+}
+
+.press:active {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   THE TOP BAR
+   ========================================================================== */
+
+/*
+ * The bar carries the deep ground on every route. It used to switch between
+ * paper and deep depending on the page under it, which is exactly what made
+ * the product look like it was changing colour at random. Scrolling changes
+ * how far off the page it sits, and nothing else.
+ */
+.topbar {
+  position: sticky;
+  background-color: var(--deep);
+  background-image: linear-gradient(180deg, var(--deep-2) 0%, var(--deep) 100%);
+  color: var(--deep-ink);
+  transition:
+    box-shadow var(--settle) var(--ease),
+    background-color var(--settle) var(--ease);
+}
+
+/*
+ * The edge of the bar is a gradient rule rather than a hairline: saffron at
+ * the mark, cooling to signal across the nav and fading out past it. It is the
+ * one place the two accents are shown together, and it says they belong to one
+ * scale — open on the left, cleared on the right.
+ */
+.topbar::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 176, 58, 0.55) 0%,
+    rgba(78, 227, 159, 0.4) 42%,
+    var(--deep-rule) 78%,
+    var(--deep-rule) 100%
+  );
+}
+
+.topbar[data-scrolled='true'] {
+  background-color: color-mix(in srgb, var(--deep) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(18px);
+  -webkit-backdrop-filter: saturate(1.4) blur(18px);
+  box-shadow: var(--elev-lift);
+}
+
+.topbar :focus-visible {
+  outline: 2px solid var(--saffron);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------- the page head
+ * The working-page masthead: the same deep ground as a public band, rounded
+ * into the column, with the surveyor's grid receding across it. It is what
+ * makes a portal screen look like part of this product rather than a form.
+ */
+.page-head {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius-block);
+  background-color: var(--deep);
+  background-image:
+    radial-gradient(680px 320px at 4% -30%, rgba(78, 227, 159, 0.2), transparent 62%),
+    radial-gradient(560px 300px at 94% -10%, rgba(255, 176, 58, 0.16), transparent 60%),
+    linear-gradient(150deg, var(--deep-2) 0%, var(--deep) 62%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    var(--elev-lift);
+}
+
+.page-head::before {
+  content: '';
+  position: absolute;
+  inset: 34% 0 -40% 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgba(134, 168, 148, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(134, 168, 148, 0.14) 1px, transparent 1px);
+  background-size: 54px 54px;
+  transform: perspective(560px) rotateX(66deg) scale(1.9);
+  transform-origin: 50% 0%;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 72%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 72%);
+  pointer-events: none;
+}
+
+/*
+ * A breadcrumb inside the head is written by the page in the paper inks, and
+ * there are 39 of them. Repainting it here beats threading a tone prop through
+ * every one; the selector is tight enough that nothing else in the head moves.
+ */
+.page-head nav[aria-label='Breadcrumb'] ol {
+  color: var(--deep-dim);
+}
+.page-head nav[aria-label='Breadcrumb'] a {
+  color: var(--deep-dim);
+}
+.page-head nav[aria-label='Breadcrumb'] a:hover {
+  color: var(--saffron);
+}
+.page-head nav[aria-label='Breadcrumb'] [aria-current='page'] {
+  color: var(--deep-ink);
+}
+
+/* The mark sits in a lit well, so it reads as an object set into the bar. */
+.mark-well {
+  display: inline-flex;
+  height: 34px;
+  width: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: linear-gradient(150deg, var(--deep-3), var(--deep-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 6px 14px -6px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * The navigation strip is a well of its own, so the sliding pill has a track
+ * to run in rather than floating on the bar.
+ */
+.nav-strip {
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/*
+ * One lit pill, sliding. It carries the saffron because the place you are is
+ * the thing currently open.
+ */
+.nav-pill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, #ffc158, var(--saffron));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 4px 14px -4px rgba(255, 176, 58, 0.65);
+  transition:
+    transform var(--settle) var(--ease),
+    width var(--settle) var(--ease),
+    opacity var(--swift) var(--ease);
+  pointer-events: none;
+}
+
+/*
+ * How far through the page you are. Transform rather than width, so it is a
+ * compositor-only change on every scroll frame.
+ */
+.topbar-progress {
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 2px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--saffron), var(--signal));
+  transition: transform 90ms linear;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swift,
+  .settle,
+  .lift-on-hover,
+  .press,
+  .topbar,
+  .nav-pill,
+  .topbar-progress,
+  .ledger-row,
+  .rail::after {
+    transition: none !important;
+  }
+
+  .lift-on-hover:hover,
+  .press:hover {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   PANELS
+   One part of a document at a time. The arriving panel comes up from just
+   below and settles, so the change reads as one thing replacing another
+   rather than the page redrawing.
+   ========================================================================== */
+.panel-in {
+  animation: panel-in var(--arrive) var(--ease) both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-in {
+    animation: none;
+  }
+}

@@ -1,0 +1,82 @@
+PRAYOG audit pack — CH-2026-0143
+Generated 3 Sept 2026, 10:51 am
+
+GATE DECISIONS
+G0	cleared	12 Mar 2026	Preconditions tested and met. Whether this is a genuine operational problem, framed as an outcome, with a measured baseline and money behind it. The case proceeds on the evidence recorded against each precondition above.
+G1	cleared	23 Mar 2026	Preconditions tested and met. Whether this challenge can be published to the public without prescribing a solution. The case proceeds on the evidence recorded against each precondition above.
+G2	cleared	9 Apr 2026	Preconditions tested and met. Which applicants are eligible and which proceed to expert evaluation. The case proceeds on the evidence recorded against each precondition above.
+G3	cleared	29 Apr 2026	Preconditions tested and met. Which applicant is awarded the pilot, and on what recorded grounds. The case proceeds on the evidence recorded against each precondition above.
+G4	future	—	
+G5	future	—	
+G6	future	—	
+G0	cleared	14 Jun 2026	Preconditions tested and met. Whether this is a genuine operational problem, framed as an outcome, with a measured baseline and money behind it. The case proceeds on the evidence recorded against each precondition above.
+G1	cleared	24 Jun 2026	Preconditions tested and met. Whether this challenge can be published to the public without prescribing a solution. The case proceeds on the evidence recorded against each precondition above.
+G2	cleared	12 Jul 2026	Preconditions tested and met. Which applicants are eligible and which proceed to expert evaluation. The case proceeds on the evidence recorded against each precondition above.
+G3	cleared	10 Aug 2026	Preconditions tested and met. Which applicant is awarded the pilot, and on what recorded grounds. The case proceeds on the evidence recorded against each precondition above.
+G4	cleared	19 Aug 2026	Preconditions tested and met. Whether the pilot continues, on the evidence produced so far. The case proceeds on the evidence recorded against each precondition above.
+G5	cleared	2 Sept 2026	Preconditions tested and met. Whether the pilot met its outcome, on independently validated evidence. The case proceeds on the evidence recorded against each precondition above.
+G6	open	—	
+
+EVALUATIONS
+Dr. A. Ramanathan	4.3	submitted
+Dr. S. Mukhopadhyay	4.3	submitted
+Prof. N. Venkataraman	4.3	submitted
+
+ELIGIBILITY OVERRIDES
+
+MILESTONES
+PL-2026-0031/M1	Deployment and instrumentation complete	paid	525000
+PL-2026-0031/M2	Measurement period one complete	approved	525000
+PL-2026-0031/M3	Final measurement, handover and training complete	approved	450000
+
+PAYMENTS
+CLM-2026-0101	5 Jul 2026	525000	paid	PFMS/DEP-01/2026/816334
+CLM-2026-0102	31 Jul 2026	504000	in_approval	
+CLM-2026-0103	22 Aug 2026	450000	approved	
+
+TIMELINE
+2 Mar 2026, 10:42 am	R. Bhat	challenge.created	Draft created from the outcome-based problem statement template.	82c6b4b2d767576d94c3e2a9b4c3f563
+5 Mar 2026, 10:42 am	R. Bhat	challenge.baseline.recorded	Baseline recorded: 180 minutes median leak detection time, from the ward complaint register over 12 weeks.	eadb26b179fc0765797e018cffe4ef3e
+8 Mar 2026, 10:42 am	R. Bhat	challenge.outcome.recorded	Outcome set: reduce median leak detection time to 120 minutes or better.	9fb64873b0a2c8c5c529709a17dd2a58
+9 Mar 2026, 10:42 am	R. Bhat	language_check.flag_accepted	Solution language check flagged "acoustic correlator loggers" in the outcome. The suggested outcome-based rewrite was accepted.	e0bced0b6515a678b8cbd0759a863037
+10 Mar 2026, 10:42 am	R. Bhat	language_check.flag_accepted	Solution language check flagged a named product in the systems list. Replaced with a capability description.	af3509684e4229cb72c1c9c5a9a9dd27
+12 Mar 2026, 10:42 am	P. Rathore	gate.decision	G0 cleared. Preconditions tested and met. Whether this is a genuine operational problem, framed as an outcome, with a measured baseline and money behind it. The case proceeds on the evidence recorded against each precondition above.	c3ea514ee4aeaccf6b84a0f7d35642e9
+13 Mar 2026, 10:42 am	R. Bhat	challenge.budget.assigned	Budget head assigned: water and sanitation innovation head, 2026-27. Pilot budget ₹15,00,000.	35e0e2484b8f8526c55fe02284916936
+15 Mar 2026, 10:42 am	R. Bhat	challenge.legal.precleared	Departmental legal cell cleared the IP, data and cyber positions against template v5.2.	d460908b9a43b939d1a4d5bed990cbb4
+16 Mar 2026, 10:42 am	P. Rathore	gate.decision	Gate 0 cleared. Baseline captured, budget head assigned, outcome KPIs defined and legal pre-clearance recorded.	043934b79c2e7f0acc1656dbf31502fd
+23 Mar 2026, 10:42 am	A. Deshmukh	gate.decision	G1 cleared. Preconditions tested and met. Whether this challenge can be published to the public without prescribing a solution. The case proceeds on the evidence recorded against each precondition above.	5fa19a4a63f082ba9baff7901e51a1f4
+24 Mar 2026, 10:42 am	A. Deshmukh	gate.decision	Gate 1 cleared. No unresolved language flags, IP clause within default boundaries, required templates attached at current version.	abcd4110ed7a84d2348e012e29bdc2da
+24 Mar 2026, 10:42 am	A. Deshmukh	challenge.published	Challenge published to the demand board. Application window opened, closing 24 Apr 2026. 14 matched startups notified.	881d07eb6f8beac55d888c62f69573f0
+31 Mar 2026, 10:42 am	R. Bhat	clarification.answered	Answered a published clarification on site connectivity within the configured window.	0c8dc9d86ab7fcc8789d4a7033e11420
+9 Apr 2026, 10:42 am	P. Rathore	gate.decision	G2 cleared. Preconditions tested and met. Which applicants are eligible and which proceed to expert evaluation. The case proceeds on the evidence recorded against each precondition above.	eabea32420ed03a0f6b3c55cef87f4b4
+11 Apr 2026, 10:42 am	Meera Kulkarni	application.submitted	AquaSense Technologies submitted application APP-2026-0087 against CH-2026-0143.	c8e5bd4b8d8923596ebdae5e6f22ff14
+12 Apr 2026, 10:42 am	A. Deshmukh	eligibility.evaluated	Rule engine evaluated 11 active rules. All passed. Prior turnover and prior experience relaxed under GFR 2017 Rule 173(i) on a live recognition.	77e89e3d215ca80769ccf8f6fe8bf634
+24 Apr 2026, 10:42 am	P. Rathore	gate.decision	Gate 2 cleared. 14 applications received, 11 eligible, 6 shortlisted. Two eligibility overrides recorded with written justification.	adb67c8c4d5cb5cd539bd73753ad7d35
+29 Apr 2026, 10:42 am	D. Patil	gate.decision	G3 cleared. Preconditions tested and met. Which applicant is awarded the pilot, and on what recorded grounds. The case proceeds on the evidence recorded against each precondition above.	867047269f8afe361b42a670c7fc0eec
+8 May 2026, 10:42 am	Dr. A. Ramanathan	coi.declared	Three panel evaluators declared no conflict against APP-2026-0087.	5bba1606c2e8d7186e6370f2a4d8e426
+18 May 2026, 10:42 am	Dr. A. Ramanathan	evaluation.submitted	Evaluation submitted against rubric RUB-STD-2026 v3.1. Weighted total 4.31.	71bf3bc1edf9d6d83f00f09f7a1f6c75
+22 May 2026, 10:42 am	Dr. A. Ramanathan	panel.minutes_recorded	Evaluation minutes recorded. AquaSense ranked first of six shortlisted. One outlier score explained and retained.	3f0b6366bad5cdc65d2d6c6022ac9f7c
+28 May 2026, 10:42 am	D. Patil	gate.decision	Gate 3 cleared. Conflict declarations complete, scoring complete against the published rubric, minutes recorded. Pilot awarded to AquaSense Technologies.	59014d2e7fa919fb53b681033f3a72c5
+31 May 2026, 10:42 am	Meera Kulkarni	contract.signed	Pilot agreement v5.2 signed. Startup retains IP; government purpose licence granted under clause 7.2.	4b0fb843de0dada99910d3c67d5fb13c
+3 Jun 2026, 10:42 am	R. Bhat	pilot.started	Pilot started. 90-day duration, masked data tier, sandbox credentials issued with a 90-day expiry.	22f0e81656c135dedac5e7f8cb74fb24
+14 Jun 2026, 10:42 am	P. Rathore	gate.decision	G0 cleared. Preconditions tested and met. Whether this is a genuine operational problem, framed as an outcome, with a measured baseline and money behind it. The case proceeds on the evidence recorded against each precondition above.	43165988cfdf672ae5adf14e6d4be66a
+24 Jun 2026, 10:42 am	A. Deshmukh	gate.decision	G1 cleared. Preconditions tested and met. Whether this challenge can be published to the public without prescribing a solution. The case proceeds on the evidence recorded against each precondition above.	4342f57d9edb51ae2b2b1c15877c2f3f
+4 Jul 2026, 10:42 am	R. Bhat	incident.reported	Incident reported: masked extract query returned more rows than the agreed field list permits. Reported inside the statutory window.	ea29ca12675d81b2109b6760990445b4
+5 Jul 2026, 10:42 am	Meera Kulkarni	milestone.evidence_submitted	Milestone 1 evidence submitted: installation report, calibration record and integration test log.	86203a871ab0361072820031b52f75fb
+7 Jul 2026, 10:42 am	R. Bhat	incident.resolved	Incident closed. Sandbox view narrowed at the database level and the query rewritten to the agreed field list.	e22b6d8253ea4dd5e727ae71d900c5bb
+8 Jul 2026, 10:42 am	R. Bhat	milestone.accepted	Milestone 1 accepted. Acceptance test met in full. Payment ageing clock started on ₹5,25,000.	829186a0213e00497bee904f76278385
+12 Jul 2026, 10:42 am	P. Rathore	gate.decision	G2 cleared. Preconditions tested and met. Which applicants are eligible and which proceed to expert evaluation. The case proceeds on the evidence recorded against each precondition above.	4eef5b887200cf28ed845660449dcbf0
+25 Jul 2026, 10:42 am	D. Patil	claim.paid	Milestone 1 claim paid. Reference recorded against the payment.	63bd1a5d5da82a43555b09f2e1061a20
+29 Jul 2026, 10:42 am	Meera Kulkarni	milestone.evidence_submitted	Milestone 2 evidence submitted: measurement dataset, data quality note and field test report.	32e96cdd083610a550418bc8463343fa
+31 Jul 2026, 10:42 am	R. Bhat	milestone.accepted	Milestone 2 accepted with a deduction. Acceptance test met; liquidated damages applied for a nine-day handover delay.	52341d599704db9219e1965d752909ff
+10 Aug 2026, 10:42 am	D. Patil	gate.decision	G3 cleared. Preconditions tested and met. Which applicant is awarded the pilot, and on what recorded grounds. The case proceeds on the evidence recorded against each precondition above.	3328bb6ba56d196da5b90cca208e8778
+19 Aug 2026, 10:42 am	P. Rathore	gate.decision	G4 cleared. Preconditions tested and met. Whether the pilot continues, on the evidence produced so far. The case proceeds on the evidence recorded against each precondition above.	1d6427e63e06c63c0e4b0056cdf9da1a
+20 Aug 2026, 10:42 am	Meera Kulkarni	milestone.evidence_submitted	Milestone 3 evidence submitted: final measurement dataset, handover note and training attendance record.	f8e608089318e2758a44a21b6408d5c9
+22 Aug 2026, 10:42 am	R. Bhat	milestone.accepted	Milestone 3 accepted. Two departmental staff completed the operating procedure unaided.	3a6f2d5831ed9a17ceec8bb9aad6f773
+23 Aug 2026, 10:42 am	R. Bhat	measurement.attribution_recorded	Attribution explained: the improvement tracks logger installation zone by zone, and the two uninstrumented control zones show no comparable movement over the same period.	3f293a85d912705dbae63a68698153da
+24 Aug 2026, 10:42 am	Centre for Applied Measurement, Pune	validation.rederived	Claim re-derived independently from the ward complaint register, crew job cards and logger exports. 1,146 dispatched jobs in the pilot period.	915c25c12828237c22bf43db44b6e989
+25 Aug 2026, 10:42 am	Centre for Applied Measurement, Pune	validation.signed	Validation report VR-2026-0020 signed. Outcome: validated. Median leak detection time 180 → 113.4 minutes against a 120-minute target.	be6893553c13ea8ad0449ca9d0459023
+28 Aug 2026, 10:42 am	A. Deshmukh	gate.decision	Gate 5 cleared. Baseline versus pilot measurement complete, security audit closed with no open findings, data-handling attestation signed, attribution explained in writing.	4de9712523f359572cb8c0fef574878c
+28 Aug 2026, 10:42 am	D. Patil	readiness.computed	Procurement readiness computed at 92 of 100 from seven published components. Advisory only — the pathway decision has not been taken.	647cb0bf516dd37bccba081ca314edd2
+29 Aug 2026, 10:42 am	D. Patil	replication.package_generated	Replication package generated with nine artefacts and a checksum.	de2049371ef6629e8324a58f9b4bb7c1
+2 Sept 2026, 10:42 am	Centre for Applied Measurement, Pune	gate.decision	G5 cleared. Preconditions tested and met. Whether the pilot met its outcome, on independently validated evidence. The case proceeds on the evidence recorded against each precondition above.	046a813153440203a30a703e23ea9b64
