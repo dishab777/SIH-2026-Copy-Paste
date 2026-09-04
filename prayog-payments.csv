@@ -1,0 +1,10 @@
+"PRAYOG export","Payment claims against accepted milestones","Generated 3 Sept 2026, 10:49 am","7 of 7 rows","Unfiltered"
+
+"Milestone","Accepted on","Amount (₹)","Deduction (₹)","Ageing","Status"
+"CLM-2026-0113 Deployment and instrumentation complete Nirmalya","2 Jun 2026","525000","0","93","paid"
+"CLM-2026-0114 Measurement period one complete Nirmalya","4 Jul 2026","525000","0","61","paid"
+"CLM-2026-0101 Deployment and instrumentation complete AquaSense","5 Jul 2026","525000","0","60","paid"
+"CLM-2026-0102 Measurement period one complete AquaSense","31 Jul 2026","525000","2100000","34","in_approval"
+"CLM-2026-0115 Final measurement, handover and training complete Nirmalya","6 Aug 2026","450000","0","28","approved"
+"CLM-2026-0104 Deployment and instrumentation complete AquaSense","15 Aug 2026","875000","0","19","paid"
+"CLM-2026-0103 Final measurement, handover and training complete AquaSense","22 Aug 2026","450000","0","12","approved"
