@@ -6,10 +6,13 @@ import { KeyValueSheet } from '@/components/ledger/Ledger';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Breadcrumb } from '@/components/ui/Nav';
 import { day, num } from '@/lib/format';
+import { usePortalLink } from '@/lib/portal';
 
 export default function StartupPublicProfile() {
   const { id } = useParams();
   const query = useStartupProfile(id);
+  // Mounted under every portal now, so neither link below may be bare.
+  const link = usePortalLink();
 
   return (
     <QueryState query={query} errorTitle="Unable to load this company." loading={<PanelSkeleton lines={8} />}>
@@ -18,7 +21,7 @@ export default function StartupPublicProfile() {
         return (
           <div>
             <div className="mb-4">
-              <Breadcrumb items={[{ label: 'Demand board', to: '/' }, { label: s.tradeName }]} />
+              <Breadcrumb items={[{ label: 'Solutions', to: link('/catalogue') }, { label: s.tradeName }]} />
             </div>
 
             <header className="mb-8 border-b border-ink pb-6">
@@ -108,7 +111,7 @@ export default function StartupPublicProfile() {
                           </>
                         ) : null}
                         <Link
-                          to="/results"
+                          to={link('/results')}
                           className="mt-2 inline-block text-micro text-ink-soft underline underline-offset-2 hover:text-ink"
                         >
                           See this on the results page

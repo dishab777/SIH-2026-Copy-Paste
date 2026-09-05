@@ -33,7 +33,7 @@ export default function EvaluatorQueue() {
         empty={{
           title: 'Nothing is assigned to you.',
           body: 'Assignments arrive when a challenge is shortlisted at gate 2 and a panel is convened. You will be notified.',
-          action: { label: 'Read published challenges', to: '/challenges' },
+          action: { label: 'Read published challenges', to: '/e/challenges' },
         }}
       >
         {(payload) => {

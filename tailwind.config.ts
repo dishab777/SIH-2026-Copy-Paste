@@ -60,7 +60,14 @@ const config: Config = {
       saffron: 'var(--glow-saffron)',
       signal: 'var(--glow-signal)',
     },
-    screens: { sm: '360px', md: '768px', lg: '1024px', xl: '1440px' },
+    /*
+     * 'wide' is where the seven-item primary navigation actually fits beside the
+     * wordmark and the controls. Measured: the public nav needs 651px of track
+     * and only has 518px at 1024, so between lg and here it was overflowing into
+     * a horizontal scrollbar inside the bar. Below 'wide' the Menu carries the
+     * same destinations.
+     */
+    screens: { sm: '360px', md: '768px', lg: '1024px', wide: '1240px', xl: '1440px' },
     colors: {
       transparent: 'transparent',
       current: 'currentColor',

@@ -124,6 +124,7 @@ export const router = createBrowserRouter([
       { path: 'templates', element: <Templates /> },
       { path: 'how-it-works', element: <HowItWorks /> },
       { path: 'transparency', element: <Transparency /> },
+      { path: 'startups/:id', element: <StartupPublicProfile /> },
     ],
   },
   {
@@ -158,6 +159,7 @@ export const router = createBrowserRouter([
       { path: 'templates', element: <Templates /> },
       { path: 'how-it-works', element: <HowItWorks /> },
       { path: 'transparency', element: <Transparency /> },
+      { path: 'startups/:id', element: <StartupPublicProfile /> },
     ],
   },
   {
@@ -183,6 +185,7 @@ export const router = createBrowserRouter([
       { path: 'templates', element: <Templates /> },
       { path: 'how-it-works', element: <HowItWorks /> },
       { path: 'transparency', element: <Transparency /> },
+      { path: 'startups/:id', element: <StartupPublicProfile /> },
     ],
   },
   {
@@ -207,6 +210,7 @@ export const router = createBrowserRouter([
       { path: 'templates', element: <Templates /> },
       { path: 'how-it-works', element: <HowItWorks /> },
       { path: 'transparency', element: <Transparency /> },
+      { path: 'startups/:id', element: <StartupPublicProfile /> },
     ],
   },
   {
@@ -237,6 +241,7 @@ export const router = createBrowserRouter([
       { path: 'catalogue/:solutionId', element: <CatalogueDetail /> },
       { path: 'how-it-works', element: <HowItWorks /> },
       { path: 'transparency', element: <Transparency /> },
+      { path: 'startups/:id', element: <StartupPublicProfile /> },
     ],
   },
   {

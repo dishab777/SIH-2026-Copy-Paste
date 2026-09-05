@@ -48,7 +48,7 @@ export function Toasts() {
 export interface ShellProps {
   /** Roles this portal is for. Anyone else gets an explicit sign-in, not a redirect. */
   allow?: readonly Role[];
-  links: { to: string; label: string; end?: boolean }[];
+  links: readonly { to: string; label: string; end?: boolean }[];
   sidebar?: { to: string; label: string; end?: boolean; hint?: string }[];
   sidebarTitle?: string;
   wide?: boolean;

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GATES } from '@/config/gates';
-import { useChallenges } from '@/services/hooks';
+import { can } from '@/config/rbac';
+import { useChallenges, useSession } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
 import { PageHeader } from '@/components/layout/Shell';
 import { LedgerTable } from '@/components/ledger/LedgerTable';
@@ -12,11 +13,64 @@ import { SlaClock } from '@/components/domain/SlaClock';
 import { gateSlaDays } from '@/config/gates';
 import { countOf, daysBetween, money } from '@/lib/format';
 
+/*
+ * The way into the challenge studio.
+ *
+ * This used to be an item in the top bar, which put a verb among six places
+ * and offered it to a procurement officer, who cannot create a challenge at
+ * all. It belongs here, beside the cases it produces, and only for the roles
+ * that hold the permission — the same permission the API re-checks.
+ */
+function StudioLead() {
+  return (
+    <section
+      aria-labelledby="studio-lead"
+      className="lift-on-hover mb-6 overflow-hidden rounded-block border border-rule border-l-2 border-l-saffron bg-sheet shadow-sheet"
+    >
+      <div className="flex flex-col gap-5 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="field-label mb-2">Stage 1 · clears gate 0</p>
+          <h2 id="studio-lead" className="font-display text-h3 text-ink">
+            Start a new challenge
+          </h2>
+          <p className="mt-2 max-w-doc text-body text-ink-soft">
+            Begin with the problem you would fix tomorrow if you could. The studio turns it into an outcome a startup
+            can be paid to achieve, rather than a product you have already chosen.
+          </p>
+
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {[
+              'Eight steps, autosaved',
+              'Flags vendor naming before publication',
+              'Carries gate 0 and gate 1 readiness',
+            ].map((chip) => (
+              <li
+                key={chip}
+                className="rounded-pill border border-rule bg-ledger px-2.5 py-1 text-micro text-ink-soft"
+              >
+                {chip}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="shrink-0">
+          <LinkButton tone="primary" to="/d/challenges/new/problem">
+            Create a challenge
+          </LinkButton>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ChallengePipeline() {
   const query = useChallenges({ scope: 'department' });
+  const session = useSession();
   const navigate = useNavigate();
   const [view, setView] = useState<'table' | 'board'>('table');
   const [dragNote, setDragNote] = useState(false);
+  const mayCreate = can(session.data?.data.role ?? 'public', 'create', 'challenge');
 
   return (
     <div>
@@ -26,21 +80,18 @@ export default function ChallengePipeline() {
         servedAt={query.data?.servedAt}
         onRefresh={() => void query.refetch()}
         aside={
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2" role="group" aria-label="Table or board">
-              <Button size="sm" tone={view === 'table' ? 'primary' : 'secondary'} onClick={() => setView('table')}>
-                Table
-              </Button>
-              <Button size="sm" tone={view === 'board' ? 'primary' : 'secondary'} onClick={() => setView('board')}>
-                Board
-              </Button>
-            </div>
-            <LinkButton tone="primary" to="/d/challenges/new/problem">
-              Create a challenge
-            </LinkButton>
+          <div className="flex items-center gap-2" role="group" aria-label="Table or board">
+            <Button size="sm" tone={view === 'table' ? 'primary' : 'secondary'} onClick={() => setView('table')}>
+              Table
+            </Button>
+            <Button size="sm" tone={view === 'board' ? 'primary' : 'secondary'} onClick={() => setView('board')}>
+              Board
+            </Button>
           </div>
         }
       />
+
+      {mayCreate ? <StudioLead /> : null}
 
       <QueryState
         query={query}
@@ -49,8 +100,10 @@ export default function ChallengePipeline() {
         isEmpty={(d) => d.data.length === 0}
         empty={{
           title: 'No challenges yet.',
-          body: 'Start with the problem you would fix tomorrow if you could. The studio turns it into something a startup can be paid to solve.',
-          action: { label: 'Create a challenge', to: '/d/challenges/new/problem' },
+          body: mayCreate
+            ? 'Start with the problem you would fix tomorrow if you could. The studio turns it into something a startup can be paid to solve.'
+            : 'Nothing has been framed yet. A department nodal officer or administrator opens the first case in the challenge studio.',
+          action: mayCreate ? { label: 'Create a challenge', to: '/d/challenges/new/problem' } : undefined,
         }}
       >
         {(payload) => {

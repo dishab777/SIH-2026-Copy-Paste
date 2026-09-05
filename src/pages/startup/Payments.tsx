@@ -7,7 +7,14 @@ import { TableSkeleton, InlineNote } from '@/components/ui/Feedback';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { StatLedger } from '@/components/ledger/Ledger';
 import { PaymentAgeingBar } from '@/components/domain/SlaClock';
-import { day, money, num, countOf } from '@/lib/format';
+import {
+  FigureCard,
+  MarkRupee,
+  MarkClock,
+  MarkHold,
+  MarkOverdue,
+} from '@/components/ledger/FigureCard';
+import { day, money, moneyScaled, num, countOf } from '@/lib/format';
 
 export default function StartupPayments() {
   const query = usePayments();
@@ -33,13 +40,62 @@ export default function StartupPayments() {
           return (
             <>
               <PageHeader
+                eyebrow="Money owed to you"
                 title="Payments"
                 lead={`Every accepted milestone, with the day it was accepted and how long the money has been outstanding against a ${d.limitDays}-day limit.`}
                 servedAt={payload.servedAt}
                 onRefresh={() => void query.refetch()}
+                aside={
+                  d.totals.overdueCount > 0 ? (
+                    <Badge tone="seal" ground="deep">
+                      {countOf(d.totals.overdueCount, 'payment', 'payments')} past the limit
+                    </Badge>
+                  ) : (
+                    <Badge tone="verify" ground="deep">
+                      Every claim inside the limit
+                    </Badge>
+                  )
+                }
               />
 
-              <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
+              {/*
+                The five figures a founder actually opens this screen for, before
+                any of the detail. Outstanding first, because that is the
+                question; the oldest wait beside it, because that is the one that
+                turns into a problem.
+              */}
+              <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <FigureCard
+                  label="Outstanding"
+                  value={moneyScaled(d.totals.outstandingPaise)}
+                  detail={`across ${countOf(d.items.filter((i) => i.claim.status !== 'paid').length, 'claim', 'claims')}`}
+                  tone={d.totals.outstandingPaise > 0 ? 'hold' : 'verify'}
+                  mark={MarkRupee}
+                />
+                <FigureCard
+                  label="Oldest claim"
+                  value={`${num(d.totals.oldestDays)} days`}
+                  detail={`against a ${num(d.limitDays)}-day limit from acceptance`}
+                  tone={d.totals.oldestDays > d.limitDays ? 'seal' : d.totals.oldestDays > d.limitDays * 0.7 ? 'hold' : 'verify'}
+                  mark={MarkClock}
+                />
+                <FigureCard
+                  label="Past the limit"
+                  value={num(d.totals.overdueCount)}
+                  detail="counted on the public transparency page"
+                  tone={d.totals.overdueCount > 0 ? 'seal' : 'verify'}
+                  mark={MarkOverdue}
+                />
+                <FigureCard
+                  label="On hold"
+                  value={num(held.length)}
+                  detail={held.length > 0 ? 'each one names who is holding it' : 'nothing is being held'}
+                  tone={held.length > 0 ? 'hold' : 'verify'}
+                  mark={MarkHold}
+                />
+              </div>
+
+              <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
                 <div className="flex flex-col gap-4">
                   {overdue.length > 0 ? (
                     <InlineNote tone="seal" title={`${countOf(overdue.length, 'payment is', 'payments are')} past the limit`}>
@@ -74,11 +130,16 @@ export default function StartupPayments() {
                   ) : null}
                 </div>
 
+                {/* The summary panel from the reference: label and value, ruled,
+                    with the total set apart. It repeats the strip above in exact
+                    figures, because a founder reconciling against a bank
+                    statement needs the rupees, not the rounded crore. */}
                 <StatLedger
                   headingLevel={2}
                   title="Owed to you"
                   rows={[
                     { label: 'Claims outstanding', value: num(d.items.filter((i) => i.claim.status !== 'paid').length) },
+                    { label: 'Paid to date', value: money(d.items.filter((i) => i.claim.status === 'paid').reduce((sum, i) => sum + i.claim.netPaise, 0)) },
                     { label: 'Oldest claim', value: `${num(d.totals.oldestDays)} days` },
                     { label: 'Past the limit', value: num(d.totals.overdueCount) },
                     { label: 'Configured limit', value: `${num(d.limitDays)} days from acceptance` },

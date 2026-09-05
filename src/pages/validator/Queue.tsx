@@ -39,7 +39,7 @@ export default function ValidatorQueue() {
         empty={{
           title: 'Nothing is assigned to you.',
           body: 'A pilot reaches you once its measurement window has closed and the department requests validation at gate 5.',
-          action: { label: 'See published results', to: '/results' },
+          action: { label: 'See published results', to: '/v/results' },
         }}
       >
         {(payload) => {

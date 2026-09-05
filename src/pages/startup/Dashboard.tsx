@@ -50,7 +50,7 @@ export default function StartupDashboard() {
                     <EmptyState
                       title="Nothing is waiting on you."
                       body="Every open item is with a department, an evaluator or a validator. You will be told the moment that changes."
-                      action={{ label: 'Look at open challenges', to: '/challenges' }}
+                      action={{ label: 'Look at open challenges', to: '/s/challenges' }}
                     />
                   ) : (
                     <ul className="sheet-flat">
@@ -133,7 +133,7 @@ export default function StartupDashboard() {
                   <EmptyState
                     title="Nothing is with a department right now."
                     body="Applications under evaluation, payments in approval and validations in progress all appear here."
-                    action={{ label: 'Find a challenge to apply to', to: '/challenges' }}
+                    action={{ label: 'Find a challenge to apply to', to: '/s/challenges' }}
                   />
                 ) : (
                   <ul className="sheet-flat">

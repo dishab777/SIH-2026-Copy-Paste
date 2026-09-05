@@ -19,7 +19,14 @@ import { Field, MoneyInput, Select } from '@/components/ui/Field';
 import { PermissionGate } from '@/components/patterns/ApprovalBar';
 import { PaymentAgeingBar } from '@/components/domain/SlaClock';
 import { StatLedger } from '@/components/ledger/Ledger';
-import { countOf, day, money, num } from '@/lib/format';
+import {
+  FigureCard,
+  MarkRupee,
+  MarkCleared,
+  MarkClock,
+  MarkOverdue,
+} from '@/components/ledger/FigureCard';
+import { countOf, day, money, moneyScaled, num } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { PrayogApiError } from '@/services/api';
 import { useUi } from '@/store/ui';
@@ -64,13 +71,64 @@ export default function DepartmentPayments() {
           return (
             <>
               <PageHeader
+                eyebrow="Money the department owes"
                 title="Payments"
                 lead={`Sorted by ageing, oldest first. The clock starts on acceptance, not on invoice, and it is visible to the startup and on the public transparency page.`}
                 servedAt={payload.servedAt}
                 onRefresh={() => void query.refetch()}
+                aside={
+                  overdue.length > 0 ? (
+                    <Badge tone="seal" ground="deep">
+                      {countOf(overdue.length, 'claim', 'claims')} past the limit
+                    </Badge>
+                  ) : (
+                    <Badge tone="verify" ground="deep">
+                      Every claim inside the limit
+                    </Badge>
+                  )
+                }
               />
 
-              <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
+              {/*
+                What the department owes, before any of the detail. Ageing is
+                given its own card rather than a column, because the one thing
+                this screen exists to prevent is a claim quietly going past its
+                window while somebody reads the table from the top.
+              */}
+              <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <FigureCard
+                  label="Owed to startups"
+                  value={moneyScaled(d.totals.outstandingPaise)}
+                  detail={`across ${countOf(d.items.filter((i) => i.claim.status !== 'paid').length, 'claim', 'claims')}`}
+                  tone={d.totals.outstandingPaise > 0 ? 'hold' : 'verify'}
+                  mark={MarkRupee}
+                />
+                <FigureCard
+                  label="Oldest claim"
+                  value={`${num(d.totals.oldestDays)} days`}
+                  detail={`against a ${num(d.limitDays)}-day limit`}
+                  tone={d.totals.oldestDays > d.limitDays ? 'seal' : d.totals.oldestDays > d.limitDays * 0.7 ? 'hold' : 'verify'}
+                  mark={MarkClock}
+                />
+                <FigureCard
+                  label="Past the limit"
+                  value={num(d.totals.overdueCount)}
+                  detail="published on the transparency page"
+                  tone={d.totals.overdueCount > 0 ? 'seal' : 'verify'}
+                  mark={MarkOverdue}
+                />
+                <FigureCard
+                  label="Paid to date"
+                  value={moneyScaled(
+                    d.items.filter((i) => i.claim.status === 'paid').reduce((sum, i) => sum + i.claim.netPaise, 0),
+                  )}
+                  detail={`${countOf(d.items.filter((i) => i.claim.status === 'paid').length, 'claim', 'claims')} released`}
+                  tone="verify"
+                  mark={MarkCleared}
+                />
+              </div>
+
+              <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
                 <div className="flex flex-col gap-4">
                   {overdue.length > 0 ? (
                     <InlineNote tone="seal" title={`${countOf(overdue.length, 'claim is', 'claims are')} past the ${d.limitDays}-day limit`}>
@@ -92,11 +150,15 @@ export default function DepartmentPayments() {
                   </InlineNote>
                 </div>
 
+                {/* The exact rupees, beside the rounded figures above. A crore
+                    is the right unit for a glance and the wrong one for a
+                    sanction note. */}
                 <StatLedger
                   headingLevel={2}
                   title="Outstanding"
                   rows={[
                     { label: 'Claims outstanding', value: num(d.items.filter((i) => i.claim.status !== 'paid').length) },
+                    { label: 'On hold', value: num(d.items.filter((i) => i.claim.status === 'on_hold').length) },
                     { label: 'Past the limit', value: num(d.totals.overdueCount) },
                     { label: 'Oldest claim', value: `${num(d.totals.oldestDays)} days` },
                     { label: 'Configured limit', value: `${num(d.limitDays)} days from acceptance` },

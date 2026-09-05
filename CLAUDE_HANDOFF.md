@@ -60,7 +60,7 @@ scenario-state sweep in a real browser.
 | `npm run typecheck` | clean |
 | `npm run lint` | clean, 0 errors 0 warnings |
 | `npm run build` | succeeds |
-| App shell, gzipped | 126.4 KB (entry + vendor + router + query + i18n + CSS) |
+| App shell, gzipped | 131.6 KB (entry + vendor + router + query + i18n + CSS) |
 | Route sweep, six portals | every route renders, exactly one `h1`, no page overflow |
 | Responsive, 360 / 768 / 1024 / 1440 | no horizontal page scroll anywhere |
 | Accessibility sweep, every route | no unnamed control, no unlabelled input, no heading jump, every table captioned |
@@ -146,6 +146,13 @@ for anyone editing this:
   10px. Use it for labels beside or above a value; never for a sentence.
 - **The department and startup section rails were deleted.** Their links moved
   into the top bar. Do not add them back without also removing the duplicates.
+- **A top-bar item is a place, never an act.** "New challenge" sat in the
+  department bar among six destinations and offered the verb to a procurement
+  officer, who cannot create a challenge at all. It now lives on the pipeline
+  page it produces cases for, gated on `can(role, 'create', 'challenge')` — the
+  same permission the mock API re-checks. The department dashboard's copy of it
+  is gated on the same call, and all three entry points say the same three
+  words: **Create a challenge**.
 - **The spacing scale gained `0.5` (2px) and `1.5` (6px).** Those values were
   already being typed at a dozen call sites and silently producing no padding,
   because the scale was truncated without them.
@@ -204,6 +211,31 @@ diagram of a process rather than a picture of this one, and at any angle but the
 intended one it read as a broken zigzag. If you are tempted to reach for abstract
 geometry again: the thing this subject actually owns is the file, and drawing the
 file is what lets the page claim "from challenge to contract" and be believed.
+
+### An order is a line, not a grid
+
+`How it works` used to argue "this process is defensible" with two grids of identical cards — nine
+stage boxes, then seven gate boxes. A grid is a bad drawing of an order: it says these nine things
+exist and nothing about the fact that they happen one after another and that seven of the joins are
+signatures. Three devices replaced it, all in `globals.css`:
+
+- **`.run`** — the spine. One rule down the list, running from `--saffron` at the top to
+  `--verify` at the bottom, which is the same sentence the hairline under the top bar says: open at
+  one end, cleared at the other. `.run-mark` is the opaque 40px marker threaded onto it, carrying
+  either a stage number or a gate identifier. `.run-gate` is the bar a decision draws across it —
+  a gate is not another step, so it is not another card.
+- **`.act-card`** — the three-act legend standing beside the run, lit on the act you are reading.
+  Three across from `md`, **never from `sm`**: `sm` is 360px in this product, and three cards on a
+  phone measured 110px each and clipped their own headings. The run-time audit caught it; a static
+  guard cannot.
+- **`.span-strip`** — the same nine stages drawn a second way, to scale on a calendar, with the
+  seven decisions marked in saffron. It has a data table beside it, like every other chart here.
+
+The lit act is measured, not observed. An `IntersectionObserver` was tried first and went stale on a
+short window: the steps are tall enough that none of them intersects a narrow band, the set empties,
+and the legend keeps the wrong card lit. It now recomputes from `getBoundingClientRect().top` against
+a reading line at 40% of the viewport, one measurement per frame — the same shape as the top bar's
+scroll progress.
 
 ### Full bleed, and where the clip has to live
 
@@ -293,6 +325,52 @@ What it catches, each of which has actually shipped here at least once:
 A noisy guard gets ignored, so it deliberately checks only what is unambiguously wrong. When it is
 wrong, fix the guard — do not add an exception in a component.
 
+### audit-design.js — the checks a static guard cannot make
+
+`public/audit-design.js` is browser code, loaded into a running page:
+
+```js
+const s = document.createElement('script');
+s.src = '/audit-design.js';
+document.head.appendChild(s);
+window.__audit();   // contrast, clipping, heading order, unnamed controls
+```
+
+It exists because `check-design.mjs` reads class strings, and the things that
+actually break in this product are composited at run time. Everything below was
+found by this and could not have been found any other way:
+
+- **The primary button had no colour under its gradient.** `.btn-primary` painted
+  `background-image` only, so `background-color` stayed transparent and its white
+  label measured **1.2 : 1** on the page ground. A gradient is an image; if it does
+  not paint, nothing does.
+- **`--saffron-ink` cleared on one paper ground and failed on the other** — 5.3 : 1
+  on `--sheet`, **4.49 : 1** on `--ledger`. Both grounds have to be measured.
+- **The scrolled top bar let the page through.** At 82% opacity the content
+  behind lifted the ground enough to drop the dim control labels to **4.35 : 1**.
+  It is now 92%, measuring 5.8 : 1. An audit taken at the top of the page never
+  reaches this — **scroll before you measure.**
+
+Three parser gaps cost three false alarms before it could be trusted, all of them
+worth knowing:
+
+| Reported as | Actually |
+|---|---|
+| `rgba()` only | Chrome resolves `color-mix()` to **`color(srgb r g b / a)`** — 0-1 floats, not 0-255 |
+| every nav label unreadable | the label sits on a pill painted by an **absolutely-positioned sibling**, which no ancestor walk can see; elements with a positive z-index are skipped and counted in `stackedSkipped` |
+| `text-ink` on a deep ground | a **tone ternary** — one component correct on either ground. A line carrying inks from both families is skipped |
+
+If it reports something, confirm the mechanism before fixing the symptom; if it
+is wrong, fix the audit rather than working around it in a component.
+
+### The nav breakpoint is measured, not guessed
+
+The seven-item primary navigation needs 651px of track and had 518px at 1024,
+so between `lg` and `wide` it was overflowing into a horizontal scrollbar inside
+the bar. `screens.wide` (1240px) is where it actually fits; below that the Menu
+popover carries the same destinations in the same order. If you add a nav item,
+re-measure — do not assume `lg` still holds.
+
 ### Shared pages are mounted under every portal
 
 An evaluator needs the published challenge; a validator needs the published result; the PMU needs the
@@ -309,6 +387,38 @@ back to the public route by design: `/d/challenges` is the department's own pipe
 
 The top bar names the portal under the wordmark for the same reason. If you add a shared page, mount
 it in all six places and link to it through `usePortalLink()`.
+
+**`portalHref` has no case for `/`.** `portalHref('/d', '/')` returns `/d/`, which is the department
+dashboard rather than the demand board — no portal mounts the demand board, because a portal's own
+index is its landing page. Anything listing all seven public destinations must special-case it.
+
+### The view switcher — the public site is a place, not a dashboard
+
+The application opens on `/` while a session is already held (`USR-D01-OFF`, the department nodal
+officer), so the public bar looked like the signed-in home screen. Switching role then navigated to
+that role's portal and replaced those seven links with six work links, which read as a screen
+vanishing rather than a deliberate move between two places.
+
+The chip under the wordmark, which already said which portal you are standing in, is now the control
+that says how to leave it (`src/components/layout/ViewSwitcher.tsx`):
+
+- **Inside a portal** it lists the seven public destinations, each resolved through `portalHref` so
+  following one keeps your navigation and your identity. The two `OCCUPIED` fall-throughs and the
+  demand board are labelled "leaves your portal" rather than silently doing it.
+- **On the public site** it says so in as many words, and offers the way back — "Back to your own
+  work", naming the role you are signed in as, or a route to `/login` if you are not.
+
+The seven destinations live in `src/config/nav.ts` as `PUBLIC_LINKS`. `PublicShell` reads it and so
+does the switcher; a second copy would have drifted the first time one was renamed. Below the nav
+breakpoint the chip is hidden, so the Menu popover carries both groups under their own headings.
+
+**Nine hardcoded public links inside signed-in portals were dropped onto the public shell** and are
+now fixed: a page that lives in exactly one portal names its own prefix (`/e/challenges`,
+`/v/results`, `/s/challenges`), and a page mounted under every portal goes through `usePortalLink()`.
+`startups/:id` was mounted in one place only and is now mounted in all six. Two offers that ended at
+the portal guard are gone: the catalogue's "Adopt this in my department" is gated on
+`can(role, 'create', 'challenge')` rather than a hand-written role list that included the PMU, and a
+published challenge only offers "Open the departmental workspace" when `portalFor(role) === '/d'`.
 
 ### The page head, and the two grounds
 
@@ -608,7 +718,7 @@ Cream background · terracotta identity · black+neon · generic SaaS dashboard 
 | `query` | 10.4 KB | yes |
 | `i18n` | 15.0 KB | yes |
 | `index.css` | 9.7 KB | yes |
-| **App shell total** | **126.4 KB** | **under the 200 KB budget** |
+| **App shell total** | **131.6 KB** | **under the 200 KB budget** |
 | `forms` (zod + RHF) | 23.5 KB | no — lazy, register and wizard routes only |
 | `charts` (recharts + d3 + lodash) | 130.5 KB | no — lazy, inside `MeasurementChart` |
 | `mockapi` (msw + graphql + tldts + fixtures) | 168.2 KB | only because this build has no backend; a real deployment drops the import and the chunk with it |

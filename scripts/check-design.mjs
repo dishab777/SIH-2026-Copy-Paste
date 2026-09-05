@@ -13,6 +13,12 @@
  * A noisy guard is worse than no guard — people learn to ignore it — so this
  * checks only things that are unambiguously wrong.
  *
+ * What it deliberately does NOT check: contrast against a background that is
+ * actually composited at run time — a gradient, a translucent panel over the
+ * page wash, a sibling painted behind a label. A static rule for that fires on
+ * every legitimate overlay and hairline. Measure those in the browser against
+ * the real computed background instead.
+ *
  * Run: node scripts/check-design.mjs
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';

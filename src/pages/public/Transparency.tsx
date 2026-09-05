@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useTransparency } from '@/services/hooks';
 import { QueryState, WidgetBoundary } from '@/components/layout/QueryState';
 import { FreshnessLine, PageHeader } from '@/components/layout/Shell';
@@ -16,12 +16,12 @@ import { money, moneyScaled, num, percent } from '@/lib/format';
  */
 type Tone = 'verify' | 'hold' | 'seal' | 'open';
 
-/** The well an icon sits in: a wash of its own ink, with the ink on top. */
+/** The well an icon sits in: a lit wash of its own ink, with the ink on top. */
 const WELL: Record<Tone, string> = {
-  verify: 'bg-verify-wash text-verify',
-  hold: 'bg-hold-wash text-hold',
-  seal: 'bg-seal-wash text-seal',
-  open: 'bg-saffron text-deep',
+  verify: 'border-verify bg-gradient-to-br from-verify-wash to-sheet text-verify',
+  hold: 'border-hold bg-gradient-to-br from-hold-wash to-sheet text-hold',
+  seal: 'border-seal bg-gradient-to-br from-seal-wash to-sheet text-seal',
+  open: 'border-saffron bg-gradient-to-br from-saffron to-hold-wash text-deep',
 };
 
 /** A solid fill: a bar, a legend dot, a rail. Never text. */
@@ -41,6 +41,18 @@ const STROKE: Record<Tone, string> = {
 };
 
 /*
+ * A measured quantity is drawn as a fill that travels from its own ink into
+ * the accent beside it, so a bar carries light along its length rather than
+ * reading as a flat block of colour.
+ */
+const BAR: Record<Tone, string> = {
+  verify: 'from-verify to-signal',
+  hold: 'from-hold to-saffron',
+  seal: 'from-seal to-hold',
+  open: 'from-hold to-saffron',
+};
+
+/*
  * The rail across the head of a panel runs from its own ink into the accent
  * next to it and lets go before the far edge, so a card carries colour without
  * a second border being drawn round it.
@@ -50,6 +62,45 @@ const RAIL: Record<Tone, string> = {
   hold: 'from-hold via-saffron to-transparent',
   seal: 'from-seal via-hold to-transparent',
   open: 'from-saffron via-verify to-transparent',
+};
+
+/*
+ * Every card on this page is tinted by what it measures rather than sitting on
+ * plain paper. The tint is a gradient on the panel itself, not a second
+ * element, so it blends into the page wash instead of drawing a box inside one.
+ */
+const TINT: Record<Tone, string> = {
+  verify: 'from-verify-wash',
+  hold: 'from-hold-wash',
+  seal: 'from-seal-wash',
+  open: 'from-hold-wash',
+};
+
+/** The flat wash, for a row that is filled rather than gradiented. */
+const WASH: Record<Tone, string> = {
+  verify: 'bg-verify-wash',
+  hold: 'bg-hold-wash',
+  seal: 'bg-seal-wash',
+  open: 'bg-hold-wash',
+};
+
+/** The marginal rule down the left edge of a row, in the ink of its meaning. */
+const EDGE: Record<Tone, string> = {
+  verify: 'border-l-verify',
+  hold: 'border-l-hold',
+  seal: 'border-l-seal',
+  open: 'border-l-saffron',
+};
+
+/*
+ * The chip that says in words what the ink says in colour. Saffron cannot be
+ * read as text on paper, so the open chip takes the dark saffron cut.
+ */
+const CHIP: Record<Tone, string> = {
+  verify: 'border-verify bg-verify-wash text-verify',
+  hold: 'border-hold bg-hold-wash text-hold',
+  seal: 'border-seal bg-seal-wash text-seal',
+  open: 'border-saffron bg-hold-wash text-saffron-ink',
 };
 
 /* ------------------------------------------------------------------- marks
@@ -114,12 +165,80 @@ function SealedMark() {
   );
 }
 
+/** The ruled sheet the numbers are printed on. It labels every table card. */
+function TableMark() {
+  return (
+    <svg {...MARK} width={14} height={14} aria-hidden focusable="false">
+      <rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2.5" />
+      <path d="M2.75 7.75h14.5M8.25 7.75v8.5" />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------- primitives */
 
 /**
+ * A quantity laid against the thing it is measured by.
+ *
+ * The track is the whole of the comparison, the fill is the figure, and the
+ * hairline is the allowance — so "past it" is a shape before it is a sentence.
+ * A bar without a track and a mark is decoration; this is the smallest drawing
+ * that still carries an argument.
+ */
+function Meter({
+  tone,
+  value,
+  ceiling,
+  benchmark,
+  caption,
+}: {
+  tone: Tone;
+  value: number;
+  ceiling: number;
+  benchmark?: number;
+  caption?: ReactNode;
+}) {
+  const share = (part: number): number =>
+    ceiling > 0 ? Math.max(0, Math.min(100, (part / ceiling) * 100)) : 0;
+  const width = share(value);
+  const mark = benchmark === undefined ? null : share(benchmark);
+
+  return (
+    <div>
+      <div className="relative h-2.5 w-full rounded-pill bg-ledger">
+        <div
+          className={['h-full rounded-pill bg-gradient-to-r shadow-sheet', BAR[tone]].join(' ')}
+          style={{ width: `${width}%` }}
+        />
+        {mark === null ? null : (
+          <span aria-hidden className="absolute -inset-y-1 w-px bg-ink" style={{ left: `${mark}%` }} />
+        )}
+      </div>
+      {caption ? <p className="mt-2 text-micro text-ink-soft">{caption}</p> : null}
+    </div>
+  );
+}
+
+/** A state written in words, a dot and a wash together — never colour alone. */
+function ToneChip({ tone, children }: { tone: Tone; children: ReactNode }) {
+  return (
+    <span
+      className={[
+        'inline-flex shrink-0 items-center gap-1.5 rounded-pill border px-2.5 py-0.5 text-micro font-semibold',
+        CHIP[tone],
+      ].join(' ')}
+    >
+      <span aria-hidden className={['h-1.5 w-1.5 shrink-0 rounded-pill', FILL[tone]].join(' ')} />
+      {children}
+    </span>
+  );
+}
+
+/**
  * A headline figure: the mark, the small label, the quantity at display size,
- * and — the part that makes it mean anything — what it should be measured
- * against. A number without its comparison is a decoration.
+ * the comparison drawn, and — the part that makes it mean anything — what it
+ * should be measured against, written out. A number without its comparison is
+ * a decoration.
  */
 function FigureCard({
   mark,
@@ -127,6 +246,8 @@ function FigureCard({
   label,
   value,
   unit,
+  chip,
+  meter,
   against,
   delay,
 }: {
@@ -135,38 +256,67 @@ function FigureCard({
   label: string;
   value: string;
   unit?: string;
+  chip: string;
+  meter: ReactNode;
   against: string;
   delay: string;
 }) {
   return (
-    <div className="sheet reveal lift-on-hover relative overflow-hidden rounded-block px-5 py-6" data-delay={delay}>
+    <div
+      className={[
+        'sheet reveal lift-on-hover relative overflow-hidden rounded-block bg-gradient-to-br to-transparent px-5 py-6',
+        TINT[tone],
+      ].join(' ')}
+      data-delay={delay}
+    >
       <span
         aria-hidden
         className={['pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r', RAIL[tone]].join(' ')}
       />
-      <span
-        aria-hidden
-        className={['mb-4 flex h-11 w-11 items-center justify-center rounded-sheet shadow-sheet', WELL[tone]].join(' ')}
-      >
-        {mark}
-      </span>
-      <dt className="field-label">{label}</dt>
-      <dd className="mt-2 flex flex-wrap items-baseline gap-x-2 font-display text-display text-ink tnum">
+      <div className="flex items-start justify-between gap-3">
+        <span
+          aria-hidden
+          className={[
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-sheet border shadow-sheet',
+            WELL[tone],
+          ].join(' ')}
+        >
+          {mark}
+        </span>
+        <ToneChip tone={tone}>{chip}</ToneChip>
+      </div>
+      <dt className="field-label mt-5">{label}</dt>
+      <dd className="mt-1.5 flex flex-wrap items-baseline gap-x-2 font-display text-display text-ink tnum">
         {value}
         {unit ? <span className="text-h3 font-normal text-ink-soft">{unit}</span> : null}
       </dd>
-      <dd className="mt-2 text-micro text-ink-soft">{against}</dd>
+      <dd className="mt-5">{meter}</dd>
+      <dd className="mt-3 text-micro text-ink-soft">{against}</dd>
     </div>
   );
 }
 
 /**
- * A measure and the table it comes from, in one panel.
+ * The numbers behind a drawing, given a card of their own.
  *
- * The chart is never the record. Whatever is drawn here, the numbers behind it
- * are printed beside it on the same screen — which is the promise this page
- * makes and the reason a reader can check it rather than trust it.
+ * The chart is never the record. Whatever is drawn on this page, the figures
+ * it was drawn from are printed beside it on the same screen — which is the
+ * promise the page makes and the reason a reader can check it rather than
+ * trust it. Giving them a titled card says so on the face of it.
  */
+function TableCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-sheet border border-rule bg-ledger shadow-sheet">
+      <p className="field-label flex items-center gap-2 border-b border-rule px-4 py-3">
+        <TableMark />
+        The numbers behind it
+      </p>
+      <div className="overflow-x-auto scroll-quiet px-2 py-1">{children}</div>
+    </div>
+  );
+}
+
+/** A measure, the drawing of it, and the table it was drawn from, in one panel. */
 function MeasurePanel({
   id,
   mark,
@@ -174,6 +324,7 @@ function MeasurePanel({
   eyebrow,
   title,
   note,
+  summary,
   chart,
   table,
   split,
@@ -186,6 +337,7 @@ function MeasurePanel({
   eyebrow: string;
   title: string;
   note: string;
+  summary: ReactNode;
   chart: ReactNode;
   table: ReactNode;
   split?: boolean;
@@ -197,7 +349,8 @@ function MeasurePanel({
       aria-labelledby={`${id}-heading`}
       data-delay={delay}
       className={[
-        'sheet reveal relative overflow-hidden rounded-block px-5 py-6 md:px-6 md:py-7',
+        'sheet reveal relative overflow-hidden rounded-block bg-gradient-to-br to-transparent px-5 py-6 md:px-6 md:py-7',
+        TINT[tone],
         className ?? '',
       ].join(' ')}
     >
@@ -209,7 +362,7 @@ function MeasurePanel({
         <span
           aria-hidden
           className={[
-            'flex h-11 w-11 shrink-0 items-center justify-center rounded-sheet shadow-sheet',
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-sheet border shadow-sheet',
             WELL[tone],
           ].join(' ')}
         >
@@ -223,15 +376,25 @@ function MeasurePanel({
           <h2 id={`${id}-heading`} className="font-display text-h2 text-ink">
             {title}
           </h2>
-          <p className="mt-2 max-w-[64ch] text-body text-ink-soft">{note}</p>
+          <p className="mt-2 max-w-doc text-body text-ink-soft">{note}</p>
+          <p className="mt-4">{summary}</p>
         </div>
       </div>
 
-      <div className={['mt-6 grid grid-cols-1 gap-6', split ? 'lg:grid-cols-2' : ''].join(' ')}>
-        <div className="min-w-0">{chart}</div>
+      <div className={['mt-6 grid grid-cols-1 gap-5', split ? 'lg:grid-cols-2 lg:gap-6' : ''].join(' ')}>
+        {/* The panel's own tint falls from the top left, so the drawing inside it
+            takes its light from the other corner and the two never stack into
+            one flat block of colour. */}
+        <div
+          className={[
+            'min-w-0 rounded-sheet border border-rule bg-gradient-to-bl to-transparent px-4 py-5 shadow-sheet',
+            TINT[tone],
+          ].join(' ')}
+        >
+          {chart}
+        </div>
         <div className="min-w-0">
-          <p className="field-label mb-3">The numbers behind it</p>
-          <div className="overflow-x-auto scroll-quiet">{table}</div>
+          <TableCard>{table}</TableCard>
         </div>
       </div>
     </section>
@@ -251,6 +414,143 @@ function Th({ children, align }: { children: ReactNode; align?: 'right' }) {
   );
 }
 
+/**
+ * What happened to every pilot the programme can account for, as one disc.
+ *
+ * A proportion of a whole is the one job a ring does better than a bar, and
+ * there are four things that can have happened. It is drawn as a lit solid
+ * rather than an outline — light rakes from the upper left across the whole
+ * product and the disc is lit the same way — with the scale-up rate as a
+ * second, thinner ring inside it, because that measure is a proportion of the
+ * validated slice rather than of the whole.
+ *
+ * Decorative on purpose: every slice is written out beside it and printed in
+ * the table under it, so nothing here depends on separating the inks.
+ */
+function OutcomeRing({
+  slices,
+  total,
+  innerPercent,
+  centreValue,
+  centreLabel,
+}: {
+  slices: readonly { key: string; tone: Tone; count: number }[];
+  total: number;
+  innerPercent: number;
+  centreValue: string;
+  centreLabel: string;
+}) {
+  const id = useId();
+  const SIZE = 208;
+  const MID = SIZE / 2;
+  const RADIUS = 78;
+  const BAND = 22;
+  const INNER_RADIUS = 50;
+  const CIRC = 2 * Math.PI * RADIUS;
+  const INNER_CIRC = 2 * Math.PI * INNER_RADIUS;
+
+  let cursor = 0;
+  const arcs = slices.map((s, i) => {
+    const length = total > 0 ? (s.count / total) * CIRC : 0;
+    const arc = { ...s, index: i, length, offset: cursor };
+    cursor += length;
+    return arc;
+  });
+
+  return (
+    <div className="relative shrink-0">
+      <svg
+        width={SIZE}
+        height={SIZE}
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        role="img"
+        focusable="false"
+        aria-label={`Pilot outcomes: ${slices.map((s) => `${s.key} ${num(s.count)}`).join(', ')}.`}
+      >
+        <defs>
+          {/* A soft drop, so the ring reads as a solid lying on the page rather
+              than an outline drawn on it. */}
+          <filter id={`${id}-drop`} x="-25%" y="-25%" width="150%" height="150%">
+            <feDropShadow dx="0" dy="7" stdDeviation="9" floodColor="var(--ink)" floodOpacity="0.18" />
+          </filter>
+          {arcs.map((a) => (
+            <linearGradient key={a.key} id={`${id}-${a.index}`} x1="0" y1="0" x2="0.4" y2="1">
+              <stop offset="0%" stopColor={STROKE[a.tone]} stopOpacity="1" />
+              <stop offset="100%" stopColor={STROKE[a.tone]} stopOpacity="0.74" />
+            </linearGradient>
+          ))}
+          {/* The wash the disc sits in, so it is bedded into the panel rather
+              than floating on it. */}
+          <radialGradient id={`${id}-bed`}>
+            <stop offset="52%" stopColor="var(--verify)" stopOpacity="0.13" />
+            <stop offset="100%" stopColor="var(--verify)" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        <circle cx={MID} cy={MID} r={MID - 2} fill={`url(#${id}-bed)`} />
+
+        <g filter={`url(#${id}-drop)`}>
+          <circle cx={MID} cy={MID} r={RADIUS} fill="none" stroke="var(--ledger)" strokeWidth={BAND} />
+          {arcs.map((a) => (
+            <circle
+              key={a.key}
+              cx={MID}
+              cy={MID}
+              r={RADIUS}
+              fill="none"
+              stroke={`url(#${id}-${a.index})`}
+              strokeWidth={BAND}
+              strokeDasharray={`${a.length} ${Math.max(0, CIRC - a.length)}`}
+              strokeDashoffset={-a.offset}
+              transform={`rotate(-90 ${MID} ${MID})`}
+            />
+          ))}
+        </g>
+
+        {/* The milled edge of a seal, drawn inside the band — the same object a
+            validator presses against a signature. */}
+        <circle
+          cx={MID}
+          cy={MID}
+          r={RADIUS - BAND / 2 - 6}
+          fill="none"
+          stroke="var(--rule)"
+          strokeWidth="1"
+          strokeDasharray="2 7"
+        />
+
+        <circle cx={MID} cy={MID} r={INNER_RADIUS} fill="none" stroke="var(--rule)" strokeWidth="7" />
+        <circle
+          cx={MID}
+          cy={MID}
+          r={INNER_RADIUS}
+          fill="none"
+          stroke="var(--verify)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${(Math.max(0, Math.min(100, innerPercent)) / 100) * INNER_CIRC} ${INNER_CIRC}`}
+          transform={`rotate(-90 ${MID} ${MID})`}
+        />
+      </svg>
+      <div aria-hidden className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display text-h1 text-ink tnum">{centreValue}</span>
+        <span className="field-label mt-1">{centreLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+/*
+ * Restraint is part of the same statement as the figures, so what is held back
+ * is written out as plainly as what is published.
+ */
+const WITHHELD: readonly string[] = [
+  'Confidential documents and the evidence vault of any pilot',
+  'Private startup information beyond what a company chooses to show on its profile',
+  'Internal evaluator comments and any score before results are released',
+  'Commercially sensitive procurement detail while a pathway decision is live',
+];
+
 /* ------------------------------------------------------------------- page */
 
 export default function Transparency() {
@@ -265,8 +565,18 @@ export default function Transparency() {
         eyebrow="Public accountability"
         title="Programme transparency"
         lead="How long this programme takes, how quickly it pays, and how often its pilots actually work. Every chart here has a data table beside it."
-        servedAt={query.data?.servedAt}
-        onRefresh={() => void query.refetch()}
+        aside={
+          <>
+            <span className="inline-flex items-center gap-2 rounded-pill border border-deep-rule bg-deep-2 px-3 py-1.5 text-micro text-deep-dim">
+              <TableMark />
+              Every chart has its table
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-pill border border-signal bg-signal-veil px-3 py-1.5 text-micro text-signal">
+              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-signal" />
+              Aggregate figures only
+            </span>
+          </>
+        }
       />
 
       <WidgetBoundary label="the transparency figures">
@@ -278,6 +588,7 @@ export default function Transparency() {
                statutory is written here: the payment limit and the seven decision
                windows arrive already configured. */
             const windowTotal = d.gateDwell.reduce((s, g) => s + g.slaDays, 0);
+            const gatesInside = d.gateDwell.filter((g) => g.medianDwellDays <= g.slaDays).length;
             const totalPilots = d.pilotsByDepartment.reduce((s, p) => s + p.pilots, 0);
             const departmentsWithPilots = d.pilotsByDepartment.filter((p) => p.pilots > 0).length;
             const committedTotal = d.pilotsByDepartment.reduce((s, p) => s + p.committedPaise, 0);
@@ -291,10 +602,14 @@ export default function Transparency() {
             // moneyScaled already knows where a crore begins; splitting its own
             // output keeps that rule in one place rather than restating it here.
             const [committedFigure, ...committedUnit] = moneyScaled(d.headline.committedPaise).split(' ');
-            const perPilot = totalPilots > 0 ? moneyScaled(d.headline.committedPaise / totalPilots) : '—';
+            const perPilot = totalPilots > 0 ? moneyScaled(committedTotal / totalPilots) : '—';
+
+            const awardDelay = d.medians.publicationToAwardDays - windowTotal;
+            const paymentDelay = d.medians.acceptanceToPaymentDays - d.medians.limitDays;
 
             const dwellCeiling = Math.max(1, ...d.gateDwell.map((g) => Math.max(g.medianDwellDays, g.slaDays)));
             const funnelTop = d.funnel.length > 0 ? d.funnel[0].count : 0;
+            const funnelEnd = d.funnel.length > 0 ? d.funnel[d.funnel.length - 1].count : 0;
             const outcomesTotal = d.pilotOutcomes.reduce((s, o) => s + o.count, 0);
             // "Validated" and "validated with qualifications" are both a pilot
             // that proved itself, so the centre of the ring counts them together.
@@ -304,8 +619,8 @@ export default function Transparency() {
             const maxPilots = Math.max(1, ...d.pilotsByDepartment.map((p) => p.pilots));
             const maxCommitted = Math.max(1, ...d.pilotsByDepartment.map((p) => p.committedPaise));
 
-            /* The donut. Ink by meaning where the outcome is one the product
-               already has an ink for, and by position only as a last resort. */
+            /* Ink by meaning where the outcome is one the product already has an
+               ink for, and by position only as a last resort. */
             const OUTCOME_TONE: Partial<Record<string, Tone>> = {
               Validated: 'verify',
               'Validated with qualifications': 'hold',
@@ -313,41 +628,53 @@ export default function Transparency() {
               'Still running': 'open',
             };
             const ORDER: readonly Tone[] = ['verify', 'hold', 'seal', 'open'];
-            const RADIUS = 74;
-            const CIRC = 2 * Math.PI * RADIUS;
-            const INNER_RADIUS = 48;
-            const INNER_CIRC = 2 * Math.PI * INNER_RADIUS;
-
-            let cursor = 0;
-            const arcs = d.pilotOutcomes.map((o, i) => {
-              const tone = OUTCOME_TONE[o.outcome] ?? ORDER[i % ORDER.length];
-              const length = outcomesTotal > 0 ? (o.count / outcomesTotal) * CIRC : 0;
-              const arc = { key: o.outcome, tone, length, offset: cursor };
-              cursor += length;
-              return arc;
-            });
+            const outcomeRows = d.pilotOutcomes.map((o, i) => ({
+              outcome: o.outcome,
+              count: o.count,
+              tone: OUTCOME_TONE[o.outcome] ?? ORDER[i % ORDER.length],
+            }));
 
             return (
-              <div className="flex flex-col gap-10">
+              <div className="flex flex-col gap-10 md:gap-12">
                 {/* ------------------------------------------------ the strip */}
-                <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
                   <FigureCard
                     delay="1"
-                    tone={d.medians.publicationToAwardDays <= windowTotal ? 'verify' : 'hold'}
+                    tone={awardDelay <= 0 ? 'verify' : 'seal'}
                     mark={<ClockMark />}
                     label="Publication to award"
                     value={num(d.medians.publicationToAwardDays)}
                     unit="days"
-                    against={`Median across awarded challenges. The seven decision windows allow ${num(windowTotal)} days between them.`}
+                    chip={awardDelay <= 0 ? `${num(-awardDelay)} days spare` : `${num(awardDelay)} days over`}
+                    meter={
+                      <Meter
+                        tone={awardDelay <= 0 ? 'verify' : 'seal'}
+                        value={d.medians.publicationToAwardDays}
+                        ceiling={Math.max(1, d.medians.publicationToAwardDays, windowTotal)}
+                        benchmark={windowTotal}
+                        caption={`Hairline: the ${num(windowTotal)} days the seven decision windows allow`}
+                      />
+                    }
+                    against="Median across every challenge that has been awarded, measured from the day it was published."
                   />
                   <FigureCard
                     delay="2"
-                    tone={d.medians.acceptanceToPaymentDays <= d.medians.limitDays ? 'verify' : 'seal'}
+                    tone={paymentDelay <= 0 ? 'verify' : 'seal'}
                     mark={<ClockMark />}
                     label="Acceptance to payment"
                     value={num(d.medians.acceptanceToPaymentDays)}
                     unit="days"
-                    against={`Median for a milestone that has been accepted, against a configured ${num(d.medians.limitDays)}-day limit.`}
+                    chip={paymentDelay <= 0 ? `${num(-paymentDelay)} days spare` : `${num(paymentDelay)} days over`}
+                    meter={
+                      <Meter
+                        tone={paymentDelay <= 0 ? 'verify' : 'seal'}
+                        value={d.medians.acceptanceToPaymentDays}
+                        ceiling={Math.max(1, d.medians.acceptanceToPaymentDays, d.medians.limitDays)}
+                        benchmark={d.medians.limitDays}
+                        caption={`Hairline: the configured ${num(d.medians.limitDays)}-day limit`}
+                      />
+                    }
+                    against="Median for a milestone that has been accepted, measured to the day the money left."
                   />
                   <FigureCard
                     delay="3"
@@ -355,7 +682,16 @@ export default function Transparency() {
                     mark={<RingMark />}
                     label="Paid inside the limit"
                     value={percent(d.medians.paymentTimelinessPercent)}
-                    against={`Share of paid claims settled within the limit. The remaining ${percent(lateShare)} ran past it.`}
+                    chip={lateShare > 0 ? `${percent(lateShare)} ran past` : 'All inside'}
+                    meter={
+                      <Meter
+                        tone={lateShare > 0 ? 'hold' : 'verify'}
+                        value={d.medians.paymentTimelinessPercent}
+                        ceiling={100}
+                        caption={`Out of every paid claim — ${percent(lateShare)} of them ran past the limit`}
+                      />
+                    }
+                    against="Share of claims that were settled within the configured limit rather than after it."
                   />
                   <FigureCard
                     delay="4"
@@ -364,12 +700,34 @@ export default function Transparency() {
                     label="Committed to pilots"
                     value={committedFigure}
                     unit={committedUnit.join(' ')}
-                    against={`Promised and not yet fully released, across ${num(totalPilots)} pilots — about ${perPilot} each.`}
+                    chip={`${num(totalPilots)} pilots`}
+                    meter={
+                      <Meter
+                        tone="open"
+                        value={committedTotal}
+                        ceiling={Math.max(1, d.headline.committedPaise)}
+                        caption={`${moneyScaled(committedTotal)} of it is committed to pilots already awarded — ${share(
+                          committedTotal,
+                          d.headline.committedPaise,
+                        )}`}
+                      />
+                    }
+                    against={`Promised across every open, closed and awarded challenge — about ${perPilot} for each pilot awarded so far.`}
                   />
                 </dl>
 
-                <div className="-mt-4 flex justify-end">
-                  <FreshnessLine servedAt={payload.servedAt} onRefresh={() => void query.refetch()} />
+                {/* The freshness of the figures is part of the figures, so it is
+                    stated on the page rather than tucked into the masthead. */}
+                <div className="sheet -mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 rounded-block px-5 py-3 md:-mt-6">
+                  <p className="flex items-center gap-2.5 text-micro text-ink-soft">
+                    <span aria-hidden className="live-dot shrink-0" />
+                    Aggregates for the whole programme. Nothing here names an applicant, an evaluator or a record.
+                  </p>
+                  {/* FreshnessLine carries its own top margin for the ledgers it
+                      normally sits under; on this row it has to be pulled back. */}
+                  <div className="-mt-3">
+                    <FreshnessLine servedAt={payload.servedAt} onRefresh={() => void query.refetch()} />
+                  </div>
                 </div>
 
                 {/* ----------------------------------- charts and their tables */}
@@ -384,33 +742,43 @@ export default function Transparency() {
                     eyebrow="How long decisions take"
                     title="Median gate dwell time, in days"
                     note="A gate is a decision with an owner and a window to make it in. The hairline on each bar is that window; a bar that crosses it is a decision the programme took too long over."
+                    summary={
+                      <ToneChip tone={gatesInside === d.gateDwell.length ? 'verify' : 'hold'}>
+                        {num(gatesInside)} of {num(d.gateDwell.length)} gates decided inside their window
+                      </ToneChip>
+                    }
                     chart={
-                      <ul className="flex flex-col gap-4">
+                      <ul className="flex flex-col gap-1">
                         {d.gateDwell.map((g) => {
                           const over = g.medianDwellDays > g.slaDays;
+                          const tone: Tone = over ? 'seal' : 'verify';
                           return (
-                            <li key={g.gate}>
-                              <div className="flex items-baseline justify-between gap-3">
-                                <span className="type-register text-label text-ink">{g.gate}</span>
-                                <span className="text-data text-ink tnum">{num(g.medianDwellDays)} days</span>
+                            <li key={g.gate} className="swift rounded-control px-3 py-3 hover:bg-sheet">
+                              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                                <span className="flex items-center gap-2.5">
+                                  <span className="type-register inline-flex items-center rounded-pill border border-rule bg-sheet px-2 py-0.5 text-micro text-ink">
+                                    {g.gate}
+                                  </span>
+                                  <ToneChip tone={tone}>
+                                    {over
+                                      ? `${num(g.medianDwellDays - g.slaDays)} days over`
+                                      : 'Inside the window'}
+                                  </ToneChip>
+                                </span>
+                                <span className="font-display text-h3 text-ink tnum">
+                                  {num(g.medianDwellDays)}{' '}
+                                  <span className="text-micro font-normal text-ink-soft">days</span>
+                                </span>
                               </div>
-                              <div className="relative mt-1.5 h-2.5 w-full rounded-pill bg-ledger">
-                                <div
-                                  className={['h-full rounded-pill', over ? FILL.seal : FILL.verify].join(' ')}
-                                  style={{ width: `${(g.medianDwellDays / dwellCeiling) * 100}%` }}
-                                />
-                                <span
-                                  aria-hidden
-                                  className="absolute -inset-y-1 w-px bg-ink"
-                                  style={{ left: `${(g.slaDays / dwellCeiling) * 100}%` }}
+                              <div className="mt-2.5">
+                                <Meter
+                                  tone={tone}
+                                  value={g.medianDwellDays}
+                                  ceiling={dwellCeiling}
+                                  benchmark={g.slaDays}
+                                  caption={`Window ${num(g.slaDays)} days · ${num(g.clearedCount)} cleared`}
                                 />
                               </div>
-                              <p className="mt-1.5 text-micro text-ink-soft">
-                                {over
-                                  ? `Past the ${g.slaDays}-day decision window by ${g.medianDwellDays - g.slaDays} days`
-                                  : `Inside the ${g.slaDays}-day decision window`}
-                                {` · ${num(g.clearedCount)} cleared`}
-                              </p>
                             </li>
                           );
                         })}
@@ -433,6 +801,13 @@ export default function Transparency() {
                           {d.gateDwell.map((g) => (
                             <tr key={g.gate} className="ledger-row">
                               <th scope="row" className="type-register px-3 py-2 text-left font-normal text-ink">
+                                <span
+                                  aria-hidden
+                                  className={[
+                                    'mr-2.5 inline-block h-2 w-2 rounded-pill align-middle',
+                                    g.medianDwellDays > g.slaDays ? FILL.seal : FILL.verify,
+                                  ].join(' ')}
+                                />
                                 {g.gate}
                               </th>
                               <td className="px-3 py-2 text-right text-ink tnum">{num(g.medianDwellDays)}</td>
@@ -453,26 +828,40 @@ export default function Transparency() {
                     eyebrow="Who gets through"
                     title="Applicant funnel"
                     note="Each bar is measured against the applications received, so the narrowing is the story rather than the raw counts."
+                    summary={
+                      <ToneChip tone="verify">{share(funnelEnd, funnelTop)} of applications reached a pilot</ToneChip>
+                    }
                     chart={
-                      <ul className="flex flex-col gap-4">
+                      <ul className="flex flex-col gap-1">
                         {d.funnel.map((f, i) => {
                           const previous = i > 0 ? d.funnel[i - 1] : null;
+                          const last = i === d.funnel.length - 1;
                           return (
-                            <li key={f.stage}>
-                              <div className="flex items-baseline justify-between gap-3">
+                            <li key={f.stage} className="relative pl-10">
+                              {/* The stages are one path, so the steps are joined. */}
+                              {last ? null : (
+                                <span aria-hidden className="absolute bottom-0 left-3.5 top-9 w-px bg-rule" />
+                              )}
+                              <span
+                                aria-hidden
+                                className="absolute left-0 top-1 flex h-7 w-7 items-center justify-center rounded-pill border border-verify bg-verify-wash font-display text-micro text-verify"
+                              >
+                                {i + 1}
+                              </span>
+                              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                                 <span className="text-body text-ink">{f.stage}</span>
-                                <span className="text-data text-ink tnum">{num(f.count)}</span>
+                                <span className="font-display text-h3 text-ink tnum">{num(f.count)}</span>
                               </div>
-                              <div className="mt-1.5 h-2.5 w-full rounded-pill bg-ledger">
-                                <div
-                                  className="h-full rounded-pill bg-gradient-to-r from-verify to-signal"
-                                  style={{ width: `${funnelTop > 0 ? (f.count / funnelTop) * 100 : 0}%` }}
+                              <div className={['mt-2', last ? '' : 'pb-5'].join(' ')}>
+                                <Meter
+                                  tone="verify"
+                                  value={f.count}
+                                  ceiling={funnelTop}
+                                  caption={`${share(f.count, funnelTop)} of applications received${
+                                    previous ? ` · ${num(Math.max(0, previous.count - f.count))} did not go further` : ''
+                                  }`}
                                 />
                               </div>
-                              <p className="mt-1.5 text-micro text-ink-soft">
-                                {share(f.count, funnelTop)} of applications received
-                                {previous ? ` · ${num(Math.max(0, previous.count - f.count))} did not go further` : ''}
-                              </p>
                             </li>
                           );
                         })}
@@ -492,6 +881,12 @@ export default function Transparency() {
                           {d.funnel.map((f) => (
                             <tr key={f.stage} className="ledger-row">
                               <th scope="row" className="px-3 py-2 text-left font-normal text-ink">
+                                <span
+                                  aria-hidden
+                                  className={['mr-2.5 inline-block h-2 w-2 rounded-pill align-middle', FILL.verify].join(
+                                    ' ',
+                                  )}
+                                />
                                 {f.stage}
                               </th>
                               <td className="px-3 py-2 text-right text-ink tnum">{num(f.count)}</td>
@@ -510,79 +905,61 @@ export default function Transparency() {
                     mark={<RingMark />}
                     eyebrow="What was proved"
                     title="Pilot outcomes"
-                    note="The outer ring is every pilot the programme can account for. The inner ring is how many validated pilots went on to a scale-up case."
+                    note="The outer band is every pilot the programme can account for. The thin ring inside it is how many validated pilots went on to a scale-up case."
+                    summary={
+                      <ToneChip tone="hold">
+                        {num(outcomesTotal)} pilots accounted for · {share(validatedOrBetter, outcomesTotal)} validated
+                      </ToneChip>
+                    }
                     chart={
-                      <div className="flex flex-wrap items-center gap-6">
-                        <div className="relative shrink-0">
-                          <svg
-                            width="192"
-                            height="192"
-                            viewBox="0 0 192 192"
-                            role="img"
-                            focusable="false"
-                            aria-label={`Pilot outcomes: ${d.pilotOutcomes
-                              .map((o) => `${o.outcome} ${num(o.count)}`)
-                              .join(', ')}`}
-                          >
-                            <circle cx="96" cy="96" r={RADIUS} fill="none" stroke="var(--ledger)" strokeWidth="20" />
-                            {arcs.map((a) => (
-                              <circle
-                                key={a.key}
-                                cx="96"
-                                cy="96"
-                                r={RADIUS}
-                                fill="none"
-                                stroke={STROKE[a.tone]}
-                                strokeWidth="20"
-                                strokeDasharray={`${a.length} ${Math.max(0, CIRC - a.length)}`}
-                                strokeDashoffset={-a.offset}
-                                transform="rotate(-90 96 96)"
-                              />
-                            ))}
-                            <circle
-                              cx="96"
-                              cy="96"
-                              r={INNER_RADIUS}
-                              fill="none"
-                              stroke="var(--rule)"
-                              strokeWidth="8"
-                            />
-                            <circle
-                              cx="96"
-                              cy="96"
-                              r={INNER_RADIUS}
-                              fill="none"
-                              stroke="var(--verify)"
-                              strokeWidth="8"
-                              strokeLinecap="round"
-                              strokeDasharray={`${(scaleUpRate / 100) * INNER_CIRC} ${INNER_CIRC}`}
-                              transform="rotate(-90 96 96)"
-                            />
-                          </svg>
-                          <div
-                            aria-hidden
-                            className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
-                          >
-                            <span className="font-display text-h1 text-ink tnum">
-                              {share(validatedOrBetter, outcomesTotal)}
-                            </span>
-                            <span className="field-label mt-1">validated</span>
-                          </div>
-                        </div>
+                      <div className="flex flex-wrap items-center justify-center gap-6 lg:justify-start">
+                        <OutcomeRing
+                          slices={outcomeRows.map((r) => ({ key: r.outcome, tone: r.tone, count: r.count }))}
+                          total={outcomesTotal}
+                          innerPercent={scaleUpRate}
+                          centreValue={share(validatedOrBetter, outcomesTotal)}
+                          centreLabel="validated"
+                        />
 
-                        <ul className="flex min-w-0 flex-col gap-2.5">
-                          {arcs.map((a) => (
-                            <li key={a.key} className="flex items-center gap-2.5 text-body text-ink">
-                              <span
-                                aria-hidden
-                                className={['h-2.5 w-2.5 shrink-0 rounded-pill', FILL[a.tone]].join(' ')}
-                              />
-                              {a.key}
+                        <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
+                          {outcomeRows.map((r) => (
+                            <li
+                              key={r.outcome}
+                              className={[
+                                'flex items-center justify-between gap-3 rounded-control border border-rule border-l-2 px-3 py-2',
+                                WASH[r.tone],
+                                EDGE[r.tone],
+                              ].join(' ')}
+                            >
+                              <span className="flex min-w-0 items-center gap-2.5 text-body text-ink">
+                                <span
+                                  aria-hidden
+                                  className={['h-2.5 w-2.5 shrink-0 rounded-pill', FILL[r.tone]].join(' ')}
+                                />
+                                {r.outcome}
+                              </span>
+                              <span className="shrink-0 text-right">
+                                <span className="block font-display text-h3 text-ink tnum">{num(r.count)}</span>
+                                <span className="block text-micro text-ink-soft tnum">
+                                  {share(r.count, outcomesTotal)}
+                                </span>
+                              </span>
                             </li>
                           ))}
-                          <li className="mt-1 flex items-center gap-2.5 border-t border-rule pt-3 text-body text-ink">
-                            <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-pill border-2 border-verify" />
-                            Scale-up rate
+                          <li className="mt-1 flex items-center justify-between gap-3 rounded-control border border-rule border-l-2 border-l-verify px-3 py-2">
+                            <span className="flex items-center gap-2.5 text-body text-ink">
+                              <span
+                                aria-hidden
+                                className="h-2.5 w-2.5 shrink-0 rounded-pill border-2 border-verify"
+                              />
+                              Scale-up rate
+                            </span>
+                            <span className="shrink-0 text-right">
+                              <span className="block font-display text-h3 text-ink tnum">
+                                {num(d.scaleUpRate.scaled)} of {num(d.scaleUpRate.validated)}
+                              </span>
+                              <span className="block text-micro text-ink-soft tnum">{percent(scaleUpRate, 0)}</span>
+                            </span>
                           </li>
                         </ul>
                       </div>
@@ -598,9 +975,16 @@ export default function Transparency() {
                           </tr>
                         </thead>
                         <tbody>
-                          {d.pilotOutcomes.map((o) => (
+                          {outcomeRows.map((o) => (
                             <tr key={o.outcome} className="ledger-row">
                               <th scope="row" className="px-3 py-2 text-left font-normal text-ink">
+                                <span
+                                  aria-hidden
+                                  className={[
+                                    'mr-2.5 inline-block h-2 w-2 rounded-pill align-middle',
+                                    FILL[o.tone],
+                                  ].join(' ')}
+                                />
                                 {o.outcome}
                               </th>
                               <td className="px-3 py-2 text-right text-ink tnum">{num(o.count)}</td>
@@ -633,6 +1017,12 @@ export default function Transparency() {
                     eyebrow="Where the money went"
                     title="Pilots by department"
                     note="Two measures on one row: how many pilots a department is running, and how much it has committed to them. Money that is committed but not yet released carries the saffron, because it is still open."
+                    summary={
+                      <ToneChip tone="open">
+                        {num(departmentsWithPilots)} of {num(d.pilotsByDepartment.length)} departments have a pilot on
+                        the books
+                      </ToneChip>
+                    }
                     chart={
                       <>
                         <ul aria-hidden className="mb-4 flex flex-wrap gap-x-6 gap-y-2">
@@ -648,30 +1038,32 @@ export default function Transparency() {
                         {d.pilotsByDepartment.length === 0 ? (
                           <p className="text-body text-ink-soft">No department has a pilot on the books yet.</p>
                         ) : (
-                          <ul className="flex flex-col gap-4">
-                            {d.pilotsByDepartment.map((p) => (
-                              <li key={p.department}>
-                                <div className="flex items-baseline justify-between gap-3">
-                                  <span className="text-body text-ink">{p.department}</span>
+                          <ul className="flex flex-col gap-1">
+                            {d.pilotsByDepartment.map((p, i) => (
+                              <li key={p.department} className="swift rounded-control px-3 py-3 hover:bg-sheet">
+                                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                                  <span className="flex items-baseline gap-2.5">
+                                    <span
+                                      aria-hidden
+                                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-ledger text-micro text-ink-soft tnum"
+                                    >
+                                      {i + 1}
+                                    </span>
+                                    <span className="text-body text-ink">{p.department}</span>
+                                  </span>
                                   <span className="text-data text-ink tnum">
-                                    {num(p.pilots)} · {money(p.committedPaise)}
+                                    {num(p.pilots)} {p.pilots === 1 ? 'pilot' : 'pilots'} · {money(p.committedPaise)}
                                   </span>
                                 </div>
-                                <div className="mt-1.5 h-2 w-full rounded-pill bg-ledger">
-                                  <div
-                                    className={['h-full rounded-pill', FILL.verify].join(' ')}
-                                    style={{ width: `${(p.pilots / maxPilots) * 100}%` }}
+                                <div className="mt-2.5 flex flex-col gap-1.5">
+                                  <Meter tone="verify" value={p.pilots} ceiling={maxPilots} />
+                                  <Meter
+                                    tone="open"
+                                    value={p.committedPaise}
+                                    ceiling={maxCommitted}
+                                    caption={`${share(p.committedPaise, committedTotal)} of everything committed to pilots`}
                                   />
                                 </div>
-                                <div className="mt-1 h-2 w-full rounded-pill bg-ledger">
-                                  <div
-                                    className={['h-full rounded-pill', FILL.open].join(' ')}
-                                    style={{ width: `${(p.committedPaise / maxCommitted) * 100}%` }}
-                                  />
-                                </div>
-                                <p className="mt-1.5 text-micro text-ink-soft">
-                                  {share(p.committedPaise, committedTotal)} of everything committed
-                                </p>
                               </li>
                             ))}
                           </ul>
@@ -693,6 +1085,13 @@ export default function Transparency() {
                           {d.pilotsByDepartment.map((p) => (
                             <tr key={p.department} className="ledger-row">
                               <th scope="row" className="px-3 py-2 text-left font-normal text-ink">
+                                <span
+                                  aria-hidden
+                                  className={[
+                                    'mr-2.5 inline-block h-2 w-2 rounded-pill align-middle',
+                                    p.pilots > 0 ? FILL.open : FILL.verify,
+                                  ].join(' ')}
+                                />
                                 {p.department}
                               </th>
                               <td className="px-3 py-2 text-right text-ink tnum">{num(p.pilots)}</td>
@@ -709,71 +1108,87 @@ export default function Transparency() {
                 </div>
 
                 {/* --------------------------------------- the detail ledgers */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <StatLedger
-                    headingLevel={2}
-                    title="Programme at a glance"
-                    rows={[
-                      {
-                        label: 'Departments participating',
-                        value: num(d.headline.departments),
-                        detail: `${num(departmentsWithPilots)} of them have at least one pilot on the books`,
-                      },
-                      {
-                        label: 'Open challenges',
-                        value: num(d.headline.openProblems),
-                        detail: `Accepting applications now, across ${num(d.headline.districts)} districts`,
-                      },
-                      {
-                        label: 'Active pilots',
-                        value: num(d.headline.activePilots),
-                        detail: `Executing now, out of ${num(totalPilots)} awarded to date`,
-                      },
-                      {
-                        label: 'Startups participating',
-                        value: num(d.headline.startups),
-                        detail: `${each(d.headline.applications, d.headline.startups)} applications each, on average`,
-                      },
-                      {
-                        label: 'Districts reached',
-                        value: num(d.headline.districts),
-                        detail: `Across ${num(d.headline.departments)} participating departments`,
-                      },
-                      {
-                        label: 'Applications received',
-                        value: num(d.headline.applications),
-                        detail: `${share(totalPilots, d.headline.applications)} of them reached a pilot`,
-                      },
-                    ]}
-                    total={{ label: 'Committed to pilots', value: money(d.headline.committedPaise) }}
-                  />
+                <div className="flex flex-col gap-6">
+                  <div className="reveal" data-delay="1">
+                    <p className="field-label mb-2 flex items-center gap-2 !text-saffron-ink">
+                      <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
+                      The register behind the drawings
+                    </p>
+                    <p className="max-w-doc text-body text-ink-soft">
+                      Every figure above, written out in full with the quantity it is measured against beside it.
+                    </p>
+                  </div>
 
-                  <StatLedger
-                    headingLevel={2}
-                    title="How long things take"
-                    rows={[
-                      {
-                        label: 'Publication to award',
-                        value: `${num(d.medians.publicationToAwardDays)} days`,
-                        detail: `Median across awarded challenges, against ${num(windowTotal)} days of decision window`,
-                      },
-                      {
-                        label: 'Milestone acceptance to payment',
-                        value: `${num(d.medians.acceptanceToPaymentDays)} days`,
-                        detail: `Median, against a configured ${d.medians.limitDays}-day limit`,
-                      },
-                      {
-                        label: 'Payments made inside the limit',
-                        value: percent(d.medians.paymentTimelinessPercent),
-                        detail: `Share of paid claims settled within the limit — ${percent(lateShare)} ran past it`,
-                      },
-                      {
-                        label: 'Scale-up rate',
-                        value: `${num(d.scaleUpRate.scaled)} of ${num(d.scaleUpRate.validated)}`,
-                        detail: `Validated pilots that went on to a scale-up case — ${percent(scaleUpRate, 0)}`,
-                      },
-                    ]}
-                  />
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div className="reveal" data-delay="2">
+                      <StatLedger
+                        headingLevel={2}
+                        title="Programme at a glance"
+                        rows={[
+                          {
+                            label: 'Departments participating',
+                            value: num(d.headline.departments),
+                            detail: `${num(departmentsWithPilots)} of them have at least one pilot on the books`,
+                          },
+                          {
+                            label: 'Open challenges',
+                            value: num(d.headline.openProblems),
+                            detail: `Accepting applications now, across ${num(d.headline.districts)} districts`,
+                          },
+                          {
+                            label: 'Active pilots',
+                            value: num(d.headline.activePilots),
+                            detail: `Executing now, out of ${num(totalPilots)} awarded to date`,
+                          },
+                          {
+                            label: 'Startups participating',
+                            value: num(d.headline.startups),
+                            detail: `${each(d.headline.applications, d.headline.startups)} applications each, on average`,
+                          },
+                          {
+                            label: 'Districts reached',
+                            value: num(d.headline.districts),
+                            detail: `Across ${num(d.headline.departments)} participating departments`,
+                          },
+                          {
+                            label: 'Applications received',
+                            value: num(d.headline.applications),
+                            detail: `${share(totalPilots, d.headline.applications)} of them reached a pilot`,
+                          },
+                        ]}
+                        total={{ label: 'Committed to pilots', value: money(d.headline.committedPaise) }}
+                      />
+                    </div>
+
+                    <div className="reveal" data-delay="3">
+                      <StatLedger
+                        headingLevel={2}
+                        title="How long things take"
+                        rows={[
+                          {
+                            label: 'Publication to award',
+                            value: `${num(d.medians.publicationToAwardDays)} days`,
+                            detail: `Median across awarded challenges, against ${num(windowTotal)} days of decision window`,
+                          },
+                          {
+                            label: 'Milestone acceptance to payment',
+                            value: `${num(d.medians.acceptanceToPaymentDays)} days`,
+                            detail: `Median, against a configured ${d.medians.limitDays}-day limit`,
+                          },
+                          {
+                            label: 'Payments made inside the limit',
+                            value: percent(d.medians.paymentTimelinessPercent),
+                            detail: `Share of paid claims settled within the limit — ${percent(lateShare)} ran past it`,
+                          },
+                          {
+                            label: 'Scale-up rate',
+                            value: `${num(d.scaleUpRate.scaled)} of ${num(d.scaleUpRate.validated)}`,
+                            detail: `Validated pilots that went on to a scale-up case — ${percent(scaleUpRate, 0)}`,
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* ------------------------------------------ what is withheld
@@ -803,23 +1218,23 @@ export default function Transparency() {
                     </div>
                   </div>
 
-                  <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {[
-                      'Confidential documents and the evidence vault of any pilot',
-                      'Private startup information beyond what a company chooses to show on its profile',
-                      'Internal evaluator comments and any score before results are released',
-                      'Commercially sensitive procurement detail while a pathway decision is live',
-                    ].map((item) => (
-                      <li
-                        key={item}
-                        className="rounded-sheet border border-deep-rule border-l-2 border-l-saffron bg-deep-2 px-4 py-4 text-body text-deep-ink"
-                      >
-                        {item}
+                  <ul className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2">
+                    {WITHHELD.map((item, i) => (
+                      <li key={item}>
+                        <div className="slab slab-hover flex h-full items-start gap-4 px-5 py-5" data-accent="saffron">
+                          <span
+                            aria-hidden
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-pill bg-saffron-veil font-display text-micro text-saffron tnum"
+                          >
+                            {i + 1}
+                          </span>
+                          <p className="min-w-0 text-body text-deep-ink">{item}</p>
+                        </div>
                       </li>
                     ))}
                   </ul>
 
-                  <p className="mt-6 max-w-doc text-micro text-deep-dim">
+                  <p className="mt-7 max-w-doc text-micro text-deep-dim">
                     Aggregate figures are published; the records behind them stay access-controlled and appear in the
                     audit trail when they are opened.
                   </p>

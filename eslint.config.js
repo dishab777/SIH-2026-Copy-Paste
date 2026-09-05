@@ -18,6 +18,25 @@ export default tseslint.config(
     files: ['scripts/**/*.mjs'],
     languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
   },
+
+  /*
+   * The design audit is browser code on purpose: it measures contrast against
+   * the background a page actually composites at run time, which no static
+   * check can see. It is served from public/ so it can be loaded into a running
+   * page, and it never ships in a route.
+   */
+  {
+    files: ['public/audit-design.js'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        getComputedStyle: 'readonly',
+        location: 'readonly',
+        console: 'readonly',
+      },
+    },
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

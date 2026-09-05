@@ -15,6 +15,7 @@ import { useUi } from '@/store/ui';
 import { PrayogApiError } from '@/services/api';
 import { track } from '@/lib/analytics';
 import { usePortalLink } from '@/lib/portal';
+import { portalFor } from '@/config/rbac';
 
 export default function ChallengeDetail() {
   const { slug } = useParams();
@@ -139,9 +140,14 @@ export default function ChallengeDetail() {
                     </LinkButton>
                     <LinkButton to="/login">Sign in</LinkButton>
                   </>
-                ) : (
+                ) : portalFor(role) === '/d' ? (
+                  /*
+                   * Only the roles the department portal admits. An evaluator,
+                   * a validator or the programme unit following this reached
+                   * the portal guard rather than a workspace.
+                   */
                   <LinkButton to={`/d/challenges/${c.id}`}>Open the departmental workspace</LinkButton>
-                )}
+                ) : null}
                 </div>
               </div>
             </header>

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCatalogueSolution, useCreateChallenge, useSession } from '@/services/hooks';
+import { can } from '@/config/rbac';
 import { QueryState } from '@/components/layout/QueryState';
 import { PanelSkeleton, InlineNote } from '@/components/ui/Feedback';
 import { KeyValueSheet, ComparisonMatrix } from '@/components/ledger/Ledger';
@@ -45,7 +46,7 @@ function TickInRing({ size = 16 }: { size?: number }) {
       focusable="false"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.9}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -60,12 +61,14 @@ function TickInRing({ size = 16 }: { size?: number }) {
  *
  * This is the one thing a reader is looking for when they open a catalogue
  * entry, and it used to be a hairline chip indistinguishable from the six other
- * hairline chips on the page.
+ * hairline chips on the page. It is now the same raised green key the product
+ * clears things with: lit along its top edge, casting in its own hue, and set
+ * in caps because it is a stamp rather than a sentence.
  */
 function ClearedMark({ label }: { label: string }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-2 rounded-pill bg-verify px-4 py-2 text-label font-bold uppercase tracking-stamp text-white shadow-raise">
-      <TickInRing size={18} />
+    <span className="btn-primary press inline-flex shrink-0 items-center gap-2.5 rounded-pill px-5 py-2.5 text-label font-bold uppercase tracking-stamp text-white">
+      <TickInRing size={19} />
       {label}
     </span>
   );
@@ -85,6 +88,9 @@ type SectionId = (typeof SECTIONS)[number]['id'];
  * The record index, as a segmented control rather than a row of underlined
  * words. The columns are equal, so the lit pill is exactly one column wide and
  * travels by whole columns — one transform, nothing measured after layout.
+ *
+ * Each section carries its number, because a record is read in order and the
+ * index should say how far through it you are as well as where you are.
  */
 function SectionSegments({ value, onChange }: { value: SectionId; onChange: (id: SectionId) => void }) {
   const index = Math.max(
@@ -94,7 +100,7 @@ function SectionSegments({ value, onChange }: { value: SectionId; onChange: (id:
   return (
     <nav
       aria-label="Sections of this record"
-      className="glass scroll-quiet sticky top-20 z-20 mb-8 max-w-full overflow-x-auto rounded-pill p-1"
+      className="glass scroll-quiet sticky top-20 z-20 mb-8 max-w-full overflow-x-auto rounded-pill p-1.5"
     >
       <div
         className="relative grid min-w-max"
@@ -102,10 +108,10 @@ function SectionSegments({ value, onChange }: { value: SectionId; onChange: (id:
       >
         <span
           aria-hidden
-          className="settle pointer-events-none absolute bottom-0 left-0 top-0 rounded-pill bg-verify shadow-raise"
+          className="btn-primary settle pointer-events-none absolute bottom-0 left-0 top-0 rounded-pill"
           style={{ width: `${100 / SECTIONS.length}%`, transform: `translateX(${index * 100}%)` }}
         />
-        {SECTIONS.map((s) => {
+        {SECTIONS.map((s, i) => {
           const selected = s.id === value;
           return (
             <a
@@ -114,10 +120,19 @@ function SectionSegments({ value, onChange }: { value: SectionId; onChange: (id:
               aria-current={selected ? 'location' : undefined}
               onClick={() => onChange(s.id)}
               className={[
-                'press relative z-10 flex items-center justify-center gap-2 whitespace-nowrap rounded-pill px-5 py-2 text-label no-underline',
+                'press relative z-10 flex items-center justify-center gap-2.5 whitespace-nowrap rounded-pill px-5 py-2.5 text-label no-underline',
                 selected ? 'font-bold text-white' : 'font-medium text-ink-soft hover:text-ink',
               ].join(' ')}
             >
+              <span
+                aria-hidden
+                className={[
+                  'tnum inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-pill text-micro font-bold',
+                  selected ? 'bg-white text-verify' : 'bg-ledger text-ink-soft',
+                ].join(' ')}
+              >
+                {i + 1}
+              </span>
               {s.label}
             </a>
           );
@@ -139,7 +154,12 @@ export default function CatalogueDetail() {
   const [section, setSection] = useState<SectionId>('measured');
 
   const role = session.data?.data.role ?? 'public';
-  const canAdopt = role === 'department_officer' || role === 'department_admin' || role === 'pmu';
+  /*
+   * The permission, not a list of roles. The list said pmu, which cannot create
+   * a challenge and cannot enter the department portal either — so the offer
+   * ended in a refused mutation and, had it succeeded, a portal guard.
+   */
+  const canAdopt = can(role, 'create', 'challenge');
 
   /*
    * The index follows the reading rather than the last click, so it still says
@@ -166,12 +186,23 @@ export default function CatalogueDetail() {
     <QueryState query={query} errorTitle="Unable to load this solution." loading={<PanelSkeleton lines={8} />}>
       {(payload) => {
         const { solution, startup, department, pilot, validation, replicationPackage, challenge } = payload.data;
+        const lead = solution.validatedMetrics[0];
+        const adopted = solution.adoptedByDepartmentIds.length;
 
-        const figures: { label: string; value: string; note: string; icon: ReactNode }[] = [
+        const figures: {
+          label: string;
+          value: string;
+          note: string;
+          icon: ReactNode;
+          /* Saffron marks what is still an invitation — somewhere to go next;
+             the green marks what has already been cleared and recorded. */
+          accent: 'verify' | 'saffron';
+        }[] = [
           {
             label: 'Measures re-derived',
             value: num(solution.validatedMetrics.length),
             note: 'Recomputed from the department’s own records',
+            accent: 'verify',
             icon: (
               <Glyph>
                 <path d="M3.8 16.4a8.2 8.2 0 0 1 16.4 0" />
@@ -184,6 +215,7 @@ export default function CatalogueDetail() {
             label: 'Attestations closed',
             value: num(solution.attestations.length),
             note: 'Security, data handling and erasure',
+            accent: 'verify',
             icon: (
               <Glyph>
                 <path d="M12 3.4 5.4 6.2v5.1c0 4 2.8 7.7 6.6 8.9 3.8-1.2 6.6-4.9 6.6-8.9V6.2z" />
@@ -195,6 +227,7 @@ export default function CatalogueDetail() {
             label: 'Pilot budget',
             value: money(pilot.budgetPaise),
             note: 'What the proof itself cost the department',
+            accent: 'verify',
             icon: (
               <Glyph>
                 <path d="M4.6 6.6h14.8v10.8H4.6z" />
@@ -204,13 +237,15 @@ export default function CatalogueDetail() {
             ),
           },
           {
-            label: 'Report signed',
-            value: day(solution.validatedOn),
-            note: solution.validatorName,
+            label: 'Departments adopting',
+            value: num(adopted),
+            note: adopted > 0 ? 'Taken up after this validation' : 'Open to the first adopter',
+            accent: adopted > 0 ? 'verify' : 'saffron',
             icon: (
               <Glyph>
-                <path d="M4.6 19.4 8 18.5l9.1-9.1a2.4 2.4 0 1 0-3.4-3.4L4.6 15.1z" />
-                <path d="m13.4 6.6 3.4 3.4" />
+                <path d="M3 20.4h18" />
+                <path d="M12 3.6 20.4 8.4H3.6L12 3.6Z" />
+                <path d="M6.4 11.2v6.4M10.1 11.2v6.4M13.9 11.2v6.4M17.6 11.2v6.4" />
               </Glyph>
             ),
           },
@@ -223,13 +258,16 @@ export default function CatalogueDetail() {
               title={solution.name}
               lead={solution.summary}
               breadcrumb={
-                <Breadcrumb items={[{ label: 'Validated solutions', to: '/catalogue' }, { label: solution.name }]} />
+                <Breadcrumb items={[{ label: 'Validated solutions', to: link('/catalogue') }, { label: solution.name }]} />
               }
               aside={
                 <>
                   <div className="rounded-sheet border border-deep-rule bg-deep-2 px-5 py-3 text-right shadow-lift">
                     <p className="field-label !text-deep-dim">Independently validated</p>
-                    <p className="mt-1 font-display text-h3 text-signal">{day(solution.validatedOn)}</p>
+                    <p className="mt-1 flex items-center justify-end gap-2 font-display text-h3 text-signal">
+                      <TickInRing size={18} />
+                      {day(solution.validatedOn)}
+                    </p>
                   </div>
                   {canAdopt ? (
                     <Button tone="primary" onClick={() => setAdopting(true)}>
@@ -241,37 +279,85 @@ export default function CatalogueDetail() {
             />
 
             {/* The verdict band. One panel, one colour, one sentence saying who
-                checked what — before any of the working detail. */}
-            <div className="mb-8 flex flex-wrap items-center justify-between gap-6 rounded-block border border-l-2 border-rule border-l-verify bg-verify-wash p-6 shadow-sheet">
-              <div className="flex flex-wrap items-center gap-5">
-                <ClearedMark label="Cleared" />
-                <div>
-                  <p className="text-body text-ink">
-                    {startup.tradeName} · proved by {department.name}
-                  </p>
-                  <p className="mt-1 text-micro text-ink-soft">
-                    Re-derived by {solution.validatorName} against the target the department set before the pilot began.
-                  </p>
+                checked what — and then, without opening anything, the three
+                questions a department asks next: what, by whom, against what. */}
+            <section className="mb-8 overflow-hidden rounded-block border border-rule bg-verify-wash shadow-raise">
+              <span aria-hidden className="block h-1.5 w-full bg-verify" />
+              <div className="flex flex-wrap items-center justify-between gap-6 p-6">
+                <div className="flex flex-wrap items-center gap-5">
+                  <ClearedMark label="Cleared" />
+                  <div className="min-w-0">
+                    <p className="text-body text-ink">
+                      {startup.tradeName} · proved by {department.name}
+                    </p>
+                    <p className="mt-1 text-micro text-ink-soft">
+                      Re-derived by {solution.validatorName} against the target the department set before the pilot
+                      began.
+                    </p>
+                    <ul className="mt-3 flex flex-wrap items-center gap-2">
+                      <li className="inline-flex items-center gap-1.5 rounded-pill border border-rule bg-sheet px-3 py-1 text-micro text-ink-soft">
+                        <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-verify" />
+                        {department.district}
+                      </li>
+                      <li className="inline-flex items-center gap-1.5 rounded-pill border border-rule bg-sheet px-3 py-1 text-micro text-ink-soft">
+                        <span aria-hidden className="text-verify">
+                          <TickInRing size={13} />
+                        </span>
+                        <span className="tnum">{num(solution.attestations.length)}</span> attestations closed
+                      </li>
+                      <li className="type-register inline-flex items-center gap-1.5 rounded-pill border border-rule bg-sheet px-3 py-1 text-micro text-ink-soft">
+                        {pilot.caseId}
+                      </li>
+                    </ul>
+                  </div>
                 </div>
+                {validation?.signedAt ? (
+                  <SealStamp tone="cleared" gate="G5" date={validation.signedAt} by={solution.validatorName} />
+                ) : null}
               </div>
-              {validation?.signedAt ? (
-                <SealStamp tone="cleared" gate="G5" date={validation.signedAt} by={solution.validatorName} />
-              ) : null}
-            </div>
+
+              <dl className="grid grid-cols-1 gap-px border-t border-rule bg-rule sm:grid-cols-3">
+                <div className="bg-sheet p-5">
+                  <dt className="field-label">What was proved</dt>
+                  <dd className="mt-1 text-data text-ink">{lead?.name ?? solution.name}</dd>
+                </div>
+                <div className="bg-sheet p-5">
+                  <dt className="field-label">By whom</dt>
+                  <dd className="mt-1 text-data text-ink">{solution.validatorName}</dd>
+                </div>
+                <div className="bg-sheet p-5">
+                  <dt className="field-label">Against which target</dt>
+                  <dd className="tnum mt-1 text-data text-ink">{lead?.target ?? '—'}</dd>
+                </div>
+              </dl>
+            </section>
 
             <ul className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {figures.map((f) => (
                 <li key={f.label}>
-                  <div className="sheet lift-on-hover flex h-full flex-col rounded-block p-5">
+                  <div className="sheet lift-on-hover flex h-full flex-col overflow-hidden rounded-block">
+                    {/* The cut the figure belongs to, carried as a band across
+                        the head of the card rather than as a word. */}
                     <span
                       aria-hidden
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-sheet border border-rule bg-gradient-to-br from-verify-wash to-sheet text-verify shadow-sheet"
-                    >
-                      {f.icon}
-                    </span>
-                    <p className="field-label mt-4">{f.label}</p>
-                    <p className="tnum mt-1 font-display text-figure text-ink">{f.value}</p>
-                    <p className="mt-2 text-micro text-ink-soft">{f.note}</p>
+                      className={['block h-1 w-full', f.accent === 'saffron' ? 'bg-saffron' : 'bg-verify'].join(' ')}
+                    />
+                    <div className="flex flex-1 flex-col p-5">
+                      <span
+                        aria-hidden
+                        className={[
+                          'inline-flex h-11 w-11 items-center justify-center rounded-sheet border border-rule shadow-sheet',
+                          f.accent === 'saffron'
+                            ? 'bg-gradient-to-br from-saffron-veil to-sheet text-saffron-ink'
+                            : 'bg-gradient-to-br from-verify-wash to-sheet text-verify',
+                        ].join(' ')}
+                      >
+                        {f.icon}
+                      </span>
+                      <p className="field-label mt-4">{f.label}</p>
+                      <p className="tnum mt-1 font-display text-figure text-ink">{f.value}</p>
+                      <p className="mt-2 text-micro text-ink-soft">{f.note}</p>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -299,7 +385,7 @@ export default function CatalogueDetail() {
                     baseline: <span className="tnum">{m.baseline}</span>,
                     target: <span className="tnum">{m.target}</span>,
                     result: (
-                      <span className="tnum inline-flex items-center gap-2 rounded-pill bg-verify px-3 py-0.5 font-semibold text-white">
+                      <span className="btn-primary tnum inline-flex items-center gap-2 rounded-pill px-3 py-1 font-bold text-white">
                         <TickInRing size={14} />
                         {m.result}
                       </span>
@@ -331,6 +417,15 @@ export default function CatalogueDetail() {
                   items={[
                     { label: 'Validated by', value: solution.validatorName },
                     { label: 'Validated on', value: day(solution.validatedOn) },
+                    { label: 'Proved in', value: `${department.district}, ${department.state}` },
+                    {
+                      label: 'Pilot ran',
+                      value: (
+                        <span className="tnum">
+                          {day(pilot.startedOn)} — {day(pilot.endsOn)}
+                        </span>
+                      ),
+                    },
                     { label: 'Pilot case', value: <span className="tnum">{pilot.caseId}</span> },
                     { label: 'Pilot budget', value: <span className="tnum">{money(pilot.budgetPaise)}</span> },
                     {
@@ -348,11 +443,16 @@ export default function CatalogueDetail() {
                       : []),
                   ]}
                 />
-                <ul className="sheet-flat rounded-sheet">
+                <ul className="sheet-flat overflow-hidden rounded-sheet">
                   {solution.attestations.map((a) => (
-                    <li key={a} className="ledger-row flex items-center gap-3 px-5 py-3">
-                      <span aria-hidden className="shrink-0 text-verify">
-                        <TickInRing size={20} />
+                    <li key={a} className="ledger-row flex items-center gap-3 px-5 py-3.5">
+                      {/* Filled, not outlined: a closed attestation is a fact,
+                          and it should carry the same weight as the verdict. */}
+                      <span
+                        aria-hidden
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-pill bg-verify text-white shadow-sheet"
+                      >
+                        <TickInRing size={16} />
                       </span>
                       <span className="text-body text-ink">{a}</span>
                     </li>
@@ -369,17 +469,22 @@ export default function CatalogueDetail() {
               <h2 className="mb-3 font-display text-h2 text-ink">Replication package</h2>
               <p className="mb-5 max-w-doc text-body text-ink-soft">{solution.adoptionPathway}</p>
               {replicationPackage ? (
-                <div className="sheet-flat rounded-sheet">
-                  <p className="border-b border-ink px-5 py-3 text-label text-ink">
+                <div className="sheet-flat overflow-hidden rounded-sheet">
+                  <p className="flex flex-wrap items-center gap-2 border-b border-ink bg-verify-wash px-5 py-3 text-label text-ink">
+                    <span aria-hidden className="text-verify">
+                      <TickInRing size={16} />
+                    </span>
                     Generated {day(replicationPackage.replicationPackage.generatedOn)} · checksum{' '}
-                    <span className="tnum">{shortHash(replicationPackage.replicationPackage.hash)}</span>
+                    <span className="tnum type-register">
+                      {shortHash(replicationPackage.replicationPackage.hash)}
+                    </span>
                   </p>
                   <ol>
                     {replicationPackage.replicationPackage.contents.map((c, i) => (
-                      <li key={c} className="ledger-row flex items-center gap-4 px-5 py-3">
+                      <li key={c} className="ledger-row flex items-center gap-4 px-5 py-3.5">
                         <span
                           aria-hidden
-                          className="tnum inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-pill border border-rule bg-verify-wash text-micro font-semibold text-verify"
+                          className="tnum inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-pill bg-verify text-micro font-bold text-white shadow-sheet"
                         >
                           {i + 1}
                         </span>

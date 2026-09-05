@@ -71,11 +71,15 @@
   --seal-veil: rgba(255, 107, 107, 0.16);
 
   /*
-   * Saffron again, mixed dark enough to be read as text on a sheet. The lit
-   * cut above measures 1.9 : 1 there and is hopeless for a label.
-   * Against --sheet: 5.3 : 1.
+   * Saffron again, mixed dark enough to be read as text on paper. The lit cut
+   * above measures 1.9 : 1 there and is hopeless for a label.
+   *
+   * It has to clear on BOTH paper grounds, and the darker one is what binds:
+   * the previous value measured 5.3 : 1 on --sheet but 4.49 : 1 on --ledger,
+   * which is a fail an audit only catches on a page that happens to use the
+   * ledger ground. Now 5.7 : 1 on --sheet and 4.9 : 1 on --ledger.
    */
-  --saffron-ink: #9a5b00;
+  --saffron-ink: #915600;
 
   /* ------------------------------------------------------------- depth
    * Light rakes from the upper left, so a raised face catches it on top and
