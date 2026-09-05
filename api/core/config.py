@@ -1,8 +1,18 @@
 import os
 from functools import lru_cache
-from typing import Optional
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from supabase import create_client, Client
+from typing import Optional, Any
+
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+except ImportError:
+    from pydantic import BaseModel as BaseSettings
+    SettingsConfigDict = None
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    create_client = None
+    Client = Any
 
 
 class Settings(BaseSettings):
@@ -30,11 +40,12 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", None)
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+    if SettingsConfigDict is not None:
+        model_config = SettingsConfigDict(
+            env_file=".env",
+            env_file_encoding="utf-8",
+            extra="ignore"
+        )
 
 
 @lru_cache()
@@ -46,9 +57,10 @@ def get_supabase_client() -> Client:
     """
     Returns standard Supabase client for authenticated user context or public operations.
     """
+    if create_client is None:
+        raise RuntimeError("supabase Python library is not installed in the runtime environment.")
     settings = get_settings()
     if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-        # Provide a helpful error if environment variables are missing
         raise RuntimeError(
             "SUPABASE_URL and SUPABASE_KEY must be configured in environment variables or .env file."
         )
@@ -60,6 +72,8 @@ def get_supabase_admin_client() -> Client:
     Returns Supabase client with service role key if provided (bypasses RLS for admin operations),
     otherwise falls back to the standard key.
     """
+    if create_client is None:
+        raise RuntimeError("supabase Python library is not installed in the runtime environment.")
     settings = get_settings()
     key = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY
     if not settings.SUPABASE_URL or not key:
