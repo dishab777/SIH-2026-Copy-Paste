@@ -637,7 +637,7 @@ export const portalHandlers = [
       challenges: db.challenges
         .filter((c) => match(c.title) || match(c.caseId) || match(c.sector))
         .slice(0, 6)
-        .map((c) => ({ id: c.id, caseId: c.caseId, title: c.title, subtitle: c.sector, gate: c.currentGate })),
+        .map((c) => ({ id: c.id, slug: c.slug, caseId: c.caseId, title: c.title, subtitle: c.sector, gate: c.currentGate })),
       startups: db.startups
         .filter((s) => match(s.tradeName) || match(s.legalName) || s.capabilities.some(match))
         .slice(0, 6)

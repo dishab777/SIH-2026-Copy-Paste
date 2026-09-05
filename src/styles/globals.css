@@ -400,6 +400,13 @@
    * hover, which is what a physical key does.
    */
   .btn-primary {
+    /*
+     * The colour goes under the gradient, not instead of it. A gradient is a
+     * background-image, so on its own it leaves background-color transparent —
+     * and white label text on a button whose fill did not paint is invisible
+     * on the page ground. Measured at 1.2 : 1 before this line existed.
+     */
+    background-color: var(--verify);
     background-image: linear-gradient(180deg, #2a7a52, var(--verify));
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
@@ -861,6 +868,129 @@ button.slab:hover,
   filter: brightness(1.25);
 }
 
+/* ------------------------------------------------------------------ the run
+ * The nine stages drawn as one spine rather than nine cards.
+ *
+ * A process is an order, and an order is a line. The rule runs from the
+ * saffron that means "open" at the top to the green that means "cleared" at
+ * the bottom — the same sentence the hairline under the top bar says — and the
+ * seven gate bars cut across it, because a gate is exactly where the line
+ * stops until somebody signs.
+ */
+.run {
+  position: relative;
+}
+
+/* The spine. Inset top and bottom so it starts and ends inside the first and
+   last markers rather than running off the ends of the list. */
+.run::before {
+  content: '';
+  position: absolute;
+  left: 19px;
+  top: 20px;
+  bottom: 20px;
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, var(--saffron), var(--verify));
+}
+
+/* The marker on the spine: a stage number, or a gate identifier. Opaque,
+   because it has to cover the rule it is threaded onto. */
+.run-mark {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  border: 2px solid currentColor;
+  background-color: var(--sheet);
+  box-shadow: var(--elev-sheet);
+}
+
+/* Where the run stops. A gate is not another step, so it is not another card:
+   it is a bar across the line, in the ink the decision would be written in. */
+.run-gate {
+  border-radius: var(--radius-sheet);
+  border: 1px solid var(--rule);
+  background-color: var(--sheet);
+  background-image: linear-gradient(90deg, var(--verify-wash), transparent 64%);
+  box-shadow: var(--elev-sheet);
+}
+
+/* --------------------------------------------------------------- act card
+ * The three acts, standing beside the run as its legend. The one the reader
+ * is currently inside is lit; the other two stay legible.
+ */
+.act-card {
+  border-radius: var(--radius-block);
+  border: 1px solid var(--rule);
+  background-color: var(--sheet-veil);
+  box-shadow: var(--elev-sheet);
+  transition:
+    transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1),
+    box-shadow 260ms ease,
+    border-color 260ms ease;
+}
+
+.act-card[data-live='true'] {
+  border-color: var(--saffron);
+  box-shadow: var(--elev-raise);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-card {
+    transition: none;
+  }
+  .act-card[data-live='true'] {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------ span strip
+ * The calendar, drawn to scale. One segment per stage, sized by how long that
+ * stage typically takes, with the seven decisions marked above it.
+ */
+.span-strip {
+  display: flex;
+  width: 100%;
+  height: 44px;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--rule);
+  background-color: var(--ledger);
+}
+
+.span-seg {
+  position: relative;
+  min-width: 2px;
+  border-right: 1px solid var(--rule);
+}
+
+.span-seg:last-child {
+  border-right: 0;
+}
+
+/* The last decision has no segment join to sit on, so it sits on the edge. */
+.span-seg:last-child[data-gate='true']::after {
+  right: 0;
+}
+
+.span-seg[data-gate='true']::after {
+  /* The decision this stage ends at, marked on the calendar itself. */
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--saffron);
+}
+
 /* ---------------------------------------------------------------- ticker */
 .ticker {
   display: flex;
@@ -1116,10 +1246,16 @@ button.slab:hover,
   );
 }
 
+/*
+ * Scrolled, the bar goes translucent — but only so far. At 82% the page
+ * content showing through lifted the ground enough to drop the dim control
+ * labels to 4.35 : 1, which a static check cannot see and an audit taken at the
+ * top of the page does not reach. 92% keeps the glass and measures 5.8 : 1.
+ */
 .topbar[data-scrolled='true'] {
-  background-color: color-mix(in srgb, var(--deep) 82%, transparent);
-  backdrop-filter: saturate(1.4) blur(18px);
-  -webkit-backdrop-filter: saturate(1.4) blur(18px);
+  background-color: color-mix(in srgb, var(--deep) 92%, transparent);
+  backdrop-filter: saturate(1.5) blur(20px);
+  -webkit-backdrop-filter: saturate(1.5) blur(20px);
   box-shadow: var(--elev-lift);
 }
 

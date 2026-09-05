@@ -152,7 +152,7 @@ export default function StartupMatches() {
                 <EmptyState
                   title="Nothing clears the fit threshold right now."
                   body="The near misses below show exactly what would have to change."
-                  action={{ label: 'Browse every open challenge', to: '/challenges' }}
+                  action={{ label: 'Browse every open challenge', to: '/s/challenges' }}
                 />
               ) : (
                 <ul className="sheet-flat">

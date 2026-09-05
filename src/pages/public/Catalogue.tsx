@@ -33,6 +33,36 @@ function Glyph({ children, size = 22 }: { children: ReactNode; size?: number }) 
   );
 }
 
+/** A tick set inside a ring: the shape a validator's sign-off takes here. */
+function TickInRing({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="8" cy="8" r="6.3" />
+      <path d="m5.2 8.2 1.9 1.9 3.7-4.2" />
+    </svg>
+  );
+}
+
+function ArrowRight({ size = 16 }: { size?: number }) {
+  return (
+    <Glyph size={size}>
+      <path d="M4 12h13" />
+      <path d="m12.4 7 5 5-5 5" />
+    </Glyph>
+  );
+}
+
 /**
  * A sector reads faster as a shape than as a phrase, so the head of every card
  * carries the drawing of the thing the department was actually trying to fix.
@@ -118,28 +148,17 @@ function sectorGlyph(sector: string): ReactNode {
 }
 
 /**
- * The mark that says a validator signed this off. It is filled rather than
- * outlined, because on a page where everything is green-tinted an outline is
- * the one thing a reader's eye slides past.
+ * The mark that says a validator signed this off.
+ *
+ * It is the raised green key the rest of the product presses — filled, lit
+ * along its top edge and casting in its own hue — rather than an outlined chip,
+ * because on a page where everything carries a green tint an outline is the one
+ * thing a reader's eye slides straight past.
  */
 function ClearedMark({ label }: { label: string }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-2 rounded-pill bg-verify px-3 py-1.5 text-label font-bold uppercase tracking-stamp text-white shadow-raise">
-      <svg
-        width={16}
-        height={16}
-        viewBox="0 0 16 16"
-        aria-hidden
-        focusable="false"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="8" cy="8" r="6.3" />
-        <path d="m5.2 8.2 1.9 1.9 3.7-4.2" />
-      </svg>
+    <span className="btn-primary press inline-flex shrink-0 items-center gap-2 rounded-pill px-4 py-2 text-label font-bold uppercase tracking-stamp text-white">
+      <TickInRing size={17} />
       {label}
     </span>
   );
@@ -159,7 +178,8 @@ interface Segment {
  * The columns are equal, which is the whole trick: the lit pill is exactly one
  * column wide and moves by whole columns, so its travel is a single transform
  * and nothing has to be measured in JavaScript after a font loads or a label
- * changes length.
+ * changes length. The track is a sunk ledger well so the pill has something to
+ * run in, and the pill is the same raised green key as the primary action.
  */
 function SegmentedFilter({
   items,
@@ -177,7 +197,7 @@ function SegmentedFilter({
     items.findIndex((i) => i.id === value),
   );
   return (
-    <div className="sheet scroll-quiet max-w-full overflow-x-auto rounded-pill p-1 shadow-raise">
+    <div className="scroll-quiet max-w-full overflow-x-auto rounded-pill border border-rule bg-ledger p-1.5 shadow-sheet">
       <div
         role="tablist"
         aria-label="Filter the catalogue by sector"
@@ -186,7 +206,7 @@ function SegmentedFilter({
       >
         <span
           aria-hidden
-          className="settle pointer-events-none absolute bottom-0 left-0 top-0 rounded-pill bg-verify shadow-raise"
+          className="btn-primary settle pointer-events-none absolute bottom-0 left-0 top-0 rounded-pill"
           style={{ width: `${100 / items.length}%`, transform: `translateX(${index * 100}%)` }}
         />
         {items.map((item, i) => {
@@ -205,12 +225,26 @@ function SegmentedFilter({
                 if (e.key === 'ArrowLeft') onChange(items[(index - 1 + items.length) % items.length]!.id);
               }}
               className={[
-                'press relative z-10 flex items-center justify-center gap-2 whitespace-nowrap rounded-pill px-5 py-2 text-label',
+                'press relative z-10 flex items-center justify-center gap-2.5 whitespace-nowrap rounded-pill px-5 py-2.5 text-label',
                 selected ? 'font-bold text-white' : 'font-medium text-ink-soft hover:text-ink',
               ].join(' ')}
             >
+              <span
+                aria-hidden
+                className={[
+                  'inline-block h-2 w-2 shrink-0 rounded-full',
+                  selected ? 'bg-white' : 'bg-rule',
+                ].join(' ')}
+              />
               {item.label}
-              <span className="tnum text-micro">{num(item.count)}</span>
+              <span
+                className={[
+                  'tnum rounded-pill px-2 py-0.5 text-micro font-semibold',
+                  selected ? 'bg-white text-verify' : 'bg-sheet text-ink-soft',
+                ].join(' ')}
+              >
+                {num(item.count)}
+              </span>
             </button>
           );
         })}
@@ -218,6 +252,152 @@ function SegmentedFilter({
     </div>
   );
 }
+
+/**
+ * How much of the catalogue is currently in view, drawn rather than stated.
+ *
+ * Two rings, because there are two questions a filter answers at once: how many
+ * entries you are looking at, and how much of the subject matter that covers.
+ * The arcs move with the segmented control, so the filter has a visible effect
+ * beyond the grid re-flowing below the fold.
+ */
+function CoverageDial({
+  shown,
+  total,
+  sectorsInView,
+  sectorsTotal,
+}: {
+  shown: number;
+  total: number;
+  sectorsInView: number;
+  sectorsTotal: number;
+}) {
+  const size = 152;
+  const mid = size / 2;
+  const rOuter = 58;
+  const rInner = 41;
+  const cOuter = 2 * Math.PI * rOuter;
+  const cInner = 2 * Math.PI * rInner;
+  const entryShare = total > 0 ? shown / total : 0;
+  const sectorShare = sectorsTotal > 0 ? sectorsInView / sectorsTotal : 0;
+
+  // The caption wraps beneath the rings rather than being squeezed beside them,
+  // because the shell clips horizontal overflow and a squeezed legend would
+  // simply disappear off the edge of a phone.
+  return (
+    <figure className="flex flex-wrap items-center gap-5">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden
+        focusable="false"
+        className="block shrink-0"
+      >
+        <circle cx={mid} cy={mid} r={rOuter} fill="none" stroke="var(--ledger)" strokeWidth="13" />
+        <circle
+          cx={mid}
+          cy={mid}
+          r={rOuter}
+          fill="none"
+          stroke="var(--verify)"
+          strokeWidth="13"
+          strokeLinecap="round"
+          strokeDasharray={`${cOuter * entryShare} ${cOuter}`}
+          transform={`rotate(-90 ${mid} ${mid})`}
+        />
+        <circle cx={mid} cy={mid} r={rInner} fill="none" stroke="var(--sheet)" strokeWidth="7" />
+        <circle
+          cx={mid}
+          cy={mid}
+          r={rInner}
+          fill="none"
+          stroke="var(--saffron)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${cInner * sectorShare} ${cInner}`}
+          transform={`rotate(-90 ${mid} ${mid})`}
+        />
+        <text
+          x={mid}
+          y={mid + 4}
+          textAnchor="middle"
+          className="tnum"
+          style={{ fontSize: 34, fontWeight: 800, fill: 'var(--ink)', letterSpacing: '-0.035em' }}
+        >
+          {num(shown)}
+        </text>
+        <text
+          x={mid}
+          y={mid + 26}
+          textAnchor="middle"
+          style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.075em', fill: 'var(--ink-soft)' }}
+        >
+          IN VIEW
+        </text>
+      </svg>
+
+      <figcaption className="min-w-0 max-w-[186px]">
+        <ul className="flex flex-col gap-3">
+          <li className="flex items-start gap-2.5">
+            <span aria-hidden className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-verify" />
+            <span className="text-micro text-ink-soft">
+              <span className="tnum block font-semibold text-ink">
+                {num(shown)} of {num(total)}
+              </span>
+              validated entries in view
+            </span>
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span aria-hidden className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-saffron" />
+            <span className="text-micro text-ink-soft">
+              <span className="tnum block font-semibold text-ink">
+                {num(sectorsInView)} of {num(sectorsTotal)}
+              </span>
+              sectors covered by the filter
+            </span>
+          </li>
+        </ul>
+      </figcaption>
+    </figure>
+  );
+}
+
+/* ------------------------------------------------------- how an entry lands */
+
+const CHAIN: readonly { title: string; body: string; icon: ReactNode }[] = [
+  {
+    title: 'Proved in service',
+    body: 'A department ran the pilot on live work and recorded the result against criteria it had written down before anything was procured.',
+    icon: (
+      <Glyph size={20}>
+        <path d="M4.4 17.4h15.2" />
+        <path d="M7.6 17.4V9.8M12 17.4V5.6M16.4 17.4v-4.8" />
+      </Glyph>
+    ),
+  },
+  {
+    title: 'Re-derived independently',
+    body: 'A validator who does not work for the supplier recomputes every measure from the department’s own records, and says which records were used.',
+    icon: (
+      <Glyph size={20}>
+        <circle cx="10.6" cy="10.6" r="6.2" />
+        <path d="m15.2 15.2 4.4 4.4" />
+        <path d="m8 10.8 1.9 1.9 3.5-3.9" />
+      </Glyph>
+    ),
+  },
+  {
+    title: 'Published with its working',
+    body: 'The signed report, its checksum and the replication package are published together, so another department can check the claim before adopting it.',
+    icon: (
+      <Glyph size={20}>
+        <path d="M5.4 4.6h13.2v14.8H5.4z" />
+        <path d="M8.6 8.8h6.8M8.6 12h6.8M8.6 15.2h4" />
+      </Glyph>
+    ),
+  },
+];
 
 const PANEL = 'catalogue-entries';
 
@@ -263,7 +443,7 @@ export default function Catalogue() {
             empty={{
               title: 'Nothing has cleared validation yet.',
               body: 'A solution enters the catalogue only after an independent validator signs a report against every success criterion.',
-              action: { label: 'See published results', to: '/results' },
+              action: { label: 'See published results', to: link('/results') },
             }}
           >
             {(payload) => {
@@ -293,11 +473,20 @@ export default function Catalogue() {
                 '',
               );
 
-              const figures: { label: string; value: string; note: string; icon: ReactNode }[] = [
+              const figures: {
+                label: string;
+                value: string;
+                note: string;
+                icon: ReactNode;
+                /* Saffron marks the figure that is an invitation to act; the
+                   rest are things already cleared, so they take the green. */
+                accent: 'verify' | 'saffron';
+              }[] = [
                 {
                   label: 'Measures re-derived',
                   value: num(measures),
                   note: 'Each recomputed from source records',
+                  accent: 'verify',
                   icon: (
                     <Glyph>
                       <path d="M3.8 16.4a8.2 8.2 0 0 1 16.4 0" />
@@ -310,6 +499,7 @@ export default function Catalogue() {
                   label: 'Independent validators',
                   value: num(validators),
                   note: 'None of them work for the supplier',
+                  accent: 'verify',
                   icon: (
                     <Glyph>
                       <path d="M4.6 19.4 8 18.5l9.1-9.1a2.4 2.4 0 1 0-3.4-3.4L4.6 15.1z" />
@@ -321,6 +511,7 @@ export default function Catalogue() {
                   label: 'Sectors covered',
                   value: num(sectors.length),
                   note: 'Filter the grid below by any of them',
+                  accent: 'saffron',
                   icon: (
                     <Glyph>
                       <path d="M12 3.6 3.8 8 12 12.4 20.2 8z" />
@@ -333,6 +524,7 @@ export default function Catalogue() {
                   label: 'Most recent signature',
                   value: day(latest),
                   note: 'The last report a validator signed',
+                  accent: 'verify',
                   icon: (
                     <Glyph>
                       <path d="M4.8 6.6h14.4v13.2H4.8z" />
@@ -349,32 +541,99 @@ export default function Catalogue() {
                   <ul className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {figures.map((f, i) => (
                       <li key={f.label} className="reveal" data-delay={String((i % 4) + 1)}>
-                        <div className="sheet lift-on-hover flex h-full flex-col rounded-block p-5">
+                        <div className="sheet lift-on-hover flex h-full flex-col overflow-hidden rounded-block">
+                          {/* The cut the figure belongs to, carried as a band
+                              across the head of the card rather than as a word. */}
                           <span
                             aria-hidden
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-sheet border border-rule bg-gradient-to-br from-verify-wash to-sheet text-verify shadow-sheet"
-                          >
-                            {f.icon}
-                          </span>
-                          <p className="field-label mt-4">{f.label}</p>
-                          <p className="tnum mt-1 font-display text-figure text-ink">{f.value}</p>
-                          <p className="mt-2 text-micro text-ink-soft">{f.note}</p>
+                            className={['block h-1 w-full', f.accent === 'saffron' ? 'bg-saffron' : 'bg-verify'].join(
+                              ' ',
+                            )}
+                          />
+                          <div className="flex flex-1 flex-col p-5">
+                            <span
+                              aria-hidden
+                              className={[
+                                'inline-flex h-11 w-11 items-center justify-center rounded-sheet border border-rule shadow-sheet',
+                                f.accent === 'saffron'
+                                  ? 'bg-gradient-to-br from-saffron-veil to-sheet text-saffron-ink'
+                                  : 'bg-gradient-to-br from-verify-wash to-sheet text-verify',
+                              ].join(' ')}
+                            >
+                              {f.icon}
+                            </span>
+                            <p className="field-label mt-4">{f.label}</p>
+                            <p className="tnum mt-1 font-display text-figure text-ink">{f.value}</p>
+                            <p className="mt-2 text-micro text-ink-soft">{f.note}</p>
+                          </div>
                         </div>
                       </li>
                     ))}
                   </ul>
 
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                    <SegmentedFilter items={tabs} value={active} onChange={setSector} controls={PANEL} />
-                    <p className="tnum text-micro text-ink-soft">
-                      Showing {num(shown.length)} of {num(entries.length)}
+                  {/* The chain of custody behind the grid. It sits on the deep
+                      ground because it is the product speaking about its own
+                      procedure, not a record — the same voice as the masthead. */}
+                  <section className="deep deep-field mb-10 rounded-block px-5 py-8 shadow-lift md:px-8 md:py-10">
+                    <p className="field-label mb-3 flex items-center gap-2 !text-saffron">
+                      <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
+                      How an entry gets here
                     </p>
+                    <p className="max-w-doc text-lead text-deep-dim">
+                      Three things have to happen before a solution appears on this page, and every one of them leaves a
+                      record you can open.
+                    </p>
+                    <ol className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                      {CHAIN.map((step, i) => (
+                        <li key={step.title} className="reveal" data-delay={String(i + 1)}>
+                          <div
+                            className="slab slab-hover flex h-full flex-col rounded-block p-5"
+                            data-accent={i === CHAIN.length - 1 ? 'signal' : 'saffron'}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span
+                                aria-hidden
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-sheet border border-deep-rule bg-deep-3 text-saffron"
+                              >
+                                {step.icon}
+                              </span>
+                              <span className="type-register tnum text-micro text-deep-dim">{`0${i + 1}`}</span>
+                            </div>
+                            <p className="mt-4 font-display text-h3 text-deep-ink">{step.title}</p>
+                            <p className="mt-2 text-body text-deep-dim">{step.body}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+
+                  {/* The filter and what it is currently showing, read together
+                      in one panel — the segmented control on the left, the same
+                      answer drawn as two arcs on the right. */}
+                  <div className="sheet mb-8 flex flex-wrap items-center justify-between gap-6 rounded-block p-5 shadow-raise md:p-6">
+                    <div className="min-w-0 flex-1">
+                      <p className="field-label mb-3 flex items-center gap-2 !text-saffron-ink">
+                        <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
+                        Filter by sector
+                      </p>
+                      <SegmentedFilter items={tabs} value={active} onChange={setSector} controls={PANEL} />
+                      <p className="tnum mt-3 text-micro text-ink-soft">
+                        Showing {num(shown.length)} of {num(entries.length)} · every one independently validated
+                      </p>
+                    </div>
+                    <CoverageDial
+                      shown={shown.length}
+                      total={entries.length}
+                      sectorsInView={active === 'all' ? sectors.length : 1}
+                      sectorsTotal={sectors.length}
+                    />
                   </div>
 
                   <div id={PANEL} role="tabpanel" aria-labelledby={`${PANEL}-tab-${activeIndex}`} tabIndex={0}>
                     <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                       {shown.map(({ solution, startup, department }, i) => {
                         const lead = solution.validatedMetrics[0];
+                        const adopted = solution.adoptedByDepartmentIds.length;
                         return (
                           <li key={solution.id} className="reveal flex" data-delay={String((i % 4) + 1)}>
                             <Link
@@ -407,6 +666,34 @@ export default function Catalogue() {
                                 </p>
                                 <p className="mt-3 text-body text-ink">{solution.summary}</p>
 
+                                {/* The three facts a department checks before it
+                                    reads any further, as chips rather than as a
+                                    paragraph it has to parse. */}
+                                <ul className="mt-4 flex flex-wrap items-center gap-2">
+                                  <li className="inline-flex items-center gap-1.5 rounded-pill border border-rule bg-ledger px-3 py-1 text-micro text-ink-soft">
+                                    <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-verify" />
+                                    {department.district}
+                                  </li>
+                                  <li className="inline-flex items-center gap-1.5 rounded-pill border border-rule bg-ledger px-3 py-1 text-micro text-ink-soft">
+                                    <span aria-hidden className="text-verify">
+                                      <TickInRing size={13} />
+                                    </span>
+                                    <span className="tnum">{num(solution.attestations.length)}</span> attestations
+                                    closed
+                                  </li>
+                                  {adopted > 0 ? (
+                                    <li className="inline-flex items-center gap-1.5 rounded-pill border border-verify bg-verify-wash px-3 py-1 text-micro font-semibold text-verify">
+                                      <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-verify" />
+                                      Adopted by <span className="tnum">{num(adopted)}</span> more
+                                    </li>
+                                  ) : (
+                                    <li className="inline-flex items-center gap-1.5 rounded-pill border border-saffron bg-saffron-veil px-3 py-1 text-micro font-semibold text-saffron-ink">
+                                      <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-saffron" />
+                                      Open to the first adopter
+                                    </li>
+                                  )}
+                                </ul>
+
                                 {/* The measurement leads, because it is what is being bought. */}
                                 <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                   {solution.validatedMetrics.slice(0, 4).map((m) => (
@@ -422,14 +709,11 @@ export default function Catalogue() {
                                       <p className="mt-2 flex flex-wrap items-baseline gap-2">
                                         <span className="tnum font-display text-h3 text-ink-soft">{m.baseline}</span>
                                         <span aria-hidden className="text-verify">
-                                          <Glyph size={16}>
-                                            <path d="M4 12h13" />
-                                            <path d="m12.4 7 5 5-5 5" />
-                                          </Glyph>
+                                          <ArrowRight />
                                         </span>
                                         <span className="tnum font-display text-h2 text-ink">{m.result}</span>
                                       </p>
-                                      <p className="tnum mt-2 inline-flex rounded-pill bg-ledger px-2 py-0.5 text-micro text-ink-soft">
+                                      <p className="tnum mt-2 inline-flex rounded-pill bg-sheet px-2 py-0.5 text-micro text-ink-soft">
                                         Target {m.target}
                                       </p>
                                     </li>
@@ -460,10 +744,7 @@ export default function Catalogue() {
                                   </p>
                                   <span className="swift inline-flex items-center gap-2 rounded-pill border border-verify px-4 py-1.5 text-label font-semibold text-verify group-hover:bg-verify group-hover:text-white">
                                     Open the record
-                                    <Glyph size={16}>
-                                      <path d="M4 12h13" />
-                                      <path d="m12.4 7 5 5-5 5" />
-                                    </Glyph>
+                                    <ArrowRight />
                                   </span>
                                 </div>
                               </div>

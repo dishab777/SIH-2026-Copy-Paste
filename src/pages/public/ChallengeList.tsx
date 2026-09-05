@@ -10,6 +10,7 @@ import { Field, Input, Select, MultiSelectTags, NumberInput, Checkbox } from '@/
 import { ChallengeCard } from '@/components/domain/ChallengeCard';
 import { SECTORS, STATES, CAPABILITIES } from '@/mocks/fixtures/reference';
 import { moneyScaled, num } from '@/lib/format';
+import { usePortalLink } from '@/lib/portal';
 import type { Challenge } from '@/types/models';
 
 const SORTS = [
@@ -120,11 +121,35 @@ function Glyph({ name, size = 16 }: { name: GlyphName; size?: number }) {
  * closing window in the ink of something running against a limit, startup
  * relief in the ink of something open to you — so the sidebar carries the same
  * meanings as the cards it is narrowing.
+ *
+ * A group that is actually narrowing the list gets its glyph set into a lit
+ * green well. The two colours are saying different things and both are needed:
+ * the well is green because the filter is applied, and the glyph keeps its own
+ * ink because that is what the filter is about.
  */
-function FilterGroup({ icon, tint = 'text-verify', children }: { icon: GlyphName; tint?: string; children: ReactNode }) {
+function FilterGroup({
+  icon,
+  tint = 'text-verify',
+  active = false,
+  children,
+}: {
+  icon: GlyphName;
+  tint?: string;
+  /** Whether this group currently holds a value. Drawn, not just implied. */
+  active?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="flex items-start gap-3 border-t border-rule pt-5 first:border-t-0 first:pt-0">
-      <span className={['shrink-0', tint].join(' ')}>
+      {/* The box is the same size either way, so switching it on does not
+          shunt the control beside it sideways. */}
+      <span
+        className={[
+          'swift flex h-7 w-7 shrink-0 items-center justify-center rounded-control border',
+          tint,
+          active ? 'border-verify bg-verify-wash shadow-sheet' : 'border-transparent',
+        ].join(' ')}
+      >
         <Glyph name={icon} />
       </span>
       <div className="min-w-0 flex-1">{children}</div>
@@ -152,6 +177,8 @@ function summarise(rows: Challenge[]): Summary {
 export default function ChallengeList() {
   // Filter state lives in the URL so a filtered view can be shared and returned to.
   const [params, setParams] = useSearchParams();
+  // This page is mounted under every portal. A bare /results would swap the shell.
+  const link = usePortalLink();
 
   const filters = useMemo(
     () => ({
@@ -287,7 +314,7 @@ export default function ChallengeList() {
             </div>
 
             <div className="flex flex-col gap-5">
-              <FilterGroup icon="search" tint="text-ink-soft">
+              <FilterGroup icon="search" tint="text-ink-soft" active={filters.q !== ''}>
                 <Field label="Search the text">
                   {({ id }) => (
                     <Input
@@ -300,7 +327,7 @@ export default function ChallengeList() {
                 </Field>
               </FilterGroup>
 
-              <FilterGroup icon="tag">
+              <FilterGroup icon="tag" active={filters.sector.length > 0}>
                 <Field label="Sector">
                   {({ id }) => (
                     <MultiSelectTags
@@ -314,7 +341,7 @@ export default function ChallengeList() {
                 </Field>
               </FilterGroup>
 
-              <FilterGroup icon="pin">
+              <FilterGroup icon="pin" active={filters.state.length > 0}>
                 <Field label="State">
                   {({ id }) => (
                     <MultiSelectTags
@@ -328,7 +355,7 @@ export default function ChallengeList() {
                 </Field>
               </FilterGroup>
 
-              <FilterGroup icon="nodes">
+              <FilterGroup icon="nodes" active={filters.capability.length > 0}>
                 <Field label="Capability">
                   {({ id }) => (
                     <MultiSelectTags
@@ -342,7 +369,7 @@ export default function ChallengeList() {
                 </Field>
               </FilterGroup>
 
-              <FilterGroup icon="rupee">
+              <FilterGroup icon="rupee" active={filters.minBudget !== '' || filters.maxBudget !== ''}>
                 <div className="flex flex-col gap-4">
                   <Field label="Budget from (₹)">
                     {({ id }) => (
@@ -357,7 +384,7 @@ export default function ChallengeList() {
                 </div>
               </FilterGroup>
 
-              <FilterGroup icon="clock" tint="text-hold">
+              <FilterGroup icon="clock" tint="text-hold" active={filters.closingWithin !== ''}>
                 <Field label="Closing window">
                   {({ id }) => (
                     <Select
@@ -375,7 +402,7 @@ export default function ChallengeList() {
                 </Field>
               </FilterGroup>
 
-              <FilterGroup icon="shield" tint="text-saffron-ink">
+              <FilterGroup icon="shield" tint="text-saffron-ink" active={filters.relaxation === 'true'}>
                 <Checkbox
                   checked={filters.relaxation === 'true'}
                   onChange={(on) => set('relaxation', on ? 'true' : '')}
@@ -388,6 +415,20 @@ export default function ChallengeList() {
         </aside>
 
         <div>
+          {/*
+            The count is announced from a region that is mounted for the whole
+            life of the screen. A live region that appears at the same moment
+            its text does is not announced by most screen readers, and the
+            visible count only exists on the branch that has results — so
+            going from "no challenges match these filters" back to a full list
+            used to say nothing at all.
+          */}
+          <p role="status" aria-live="polite" className="sr-only">
+            {challenges.isSuccess
+              ? `${total} ${total === 1 ? 'challenge' : 'challenges'} match. Showing page ${page} of ${pageCount}.`
+              : ''}
+          </p>
+
           <QueryState
             query={challenges}
             errorTitle="Unable to load challenges."
@@ -430,7 +471,7 @@ export default function ChallengeList() {
                     action={
                       activeFilters.length
                         ? { label: 'Clear filters', onClick: clearAll }
-                        : { label: 'See published results', to: '/results' }
+                        : { label: 'See published results', to: link('/results') }
                     }
                   />
                 );
@@ -468,7 +509,7 @@ export default function ChallengeList() {
                         <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
                         Register
                       </p>
-                      <p aria-live="polite" className="font-display text-h3 text-ink tnum">
+                      <p className="font-display text-h3 text-ink tnum">
                         {total} {total === 1 ? 'challenge' : 'challenges'}
                         {pageCount > 1 ? (
                           <span className="ml-2 text-label font-normal text-ink-soft">
@@ -477,7 +518,7 @@ export default function ChallengeList() {
                         ) : null}
                       </p>
                     </div>
-                    <div className="w-[220px]">
+                    <div className="w-full sm:w-64">
                       <Field label="Sort by">
                         {({ id }) => (
                           <Select
@@ -520,9 +561,16 @@ export default function ChallengeList() {
                     ))}
                   </ul>
 
-                  <div className="mt-8">
-                    <Pagination page={page} pageSize={PAGE_SIZE} total={total} onChange={goToPage} />
-                  </div>
+                  {/* The pager closes the register on a washed band rather than
+                      on bare paper, so the grid ends on something rather than
+                      trailing off. It is only drawn when there is a second page
+                      to go to — Pagination renders nothing below that, and an
+                      empty green band would be worse than no band. */}
+                  {pageCount > 1 ? (
+                    <div className="mt-8 rounded-sheet bg-verify-wash px-5 pb-1 shadow-sheet">
+                      <Pagination page={page} pageSize={PAGE_SIZE} total={total} onChange={goToPage} />
+                    </div>
+                  ) : null}
                 </>
               );
             }}

@@ -1,15 +1,14 @@
 import { Shell } from '@/components/layout/Shell';
+import { PUBLIC_LINKS } from '@/config/nav';
 
-const LINKS = [
-  { to: '/', label: 'Demand board', end: true },
-  { to: '/challenges', label: 'Challenges' },
-  { to: '/results', label: 'Results' },
-  { to: '/catalogue', label: 'Solutions' },
-  { to: '/templates', label: 'Templates' },
-  { to: '/how-it-works', label: 'How it works' },
-  { to: '/transparency', label: 'Transparency' },
-];
-
+/**
+ * The public site.
+ *
+ * It is not a role's dashboard and it is not a department's home screen: it is
+ * what anyone sees without signing in. The destinations live in
+ * `@/config/nav` because the view switcher under the wordmark offers the same
+ * seven from inside every portal.
+ */
 export function PublicShell() {
-  return <Shell links={LINKS} />;
+  return <Shell links={PUBLIC_LINKS} />;
 }

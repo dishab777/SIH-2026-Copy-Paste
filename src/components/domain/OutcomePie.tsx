@@ -24,6 +24,20 @@ export const OUTCOME_INK: Record<OutcomeKey, string> = {
   not_validated: 'text-seal',
 };
 
+/**
+ * The chip a finding's name sits in when it is quoted away from the drawing —
+ * in the key above the results table, for instance.
+ *
+ * It lives here beside the ink rather than in the page that uses it, because a
+ * finding written green in one place and carbon in another is two facts to a
+ * reader rather than one.
+ */
+export const OUTCOME_CHIP: Record<OutcomeKey, string> = {
+  validated: 'border-verify bg-verify-wash',
+  validated_with_qualifications: 'border-hold bg-hold-wash',
+  not_validated: 'border-seal bg-seal-wash',
+};
+
 const OUTCOME_WASH: Record<OutcomeKey, string> = {
   validated: 'bg-verify-wash',
   validated_with_qualifications: 'bg-hold-wash',
@@ -77,9 +91,15 @@ export function OutcomeMark({ outcome, size = 20 }: { outcome: OutcomeKey; size?
       )}
 
       {outcome === 'validated' ? (
+        /*
+         * A signature written across the ruled line inside the seal. The stroke
+         * is drawn higher and heavier than the line beneath it, because at the
+         * 16px this mark is used at in a table cell the two were closing up
+         * into a single blot.
+         */
         <>
-          <path d="M7.4 13.9c1.5-3.4 2.6-3 3 0c0.4-2.4 1.5-2.4 2 0c0.6-0.6 1.6-1.4 3.4-2.6" strokeWidth={1.4} />
-          <path d="M8.4 16.5h7.2" strokeWidth={1.1} />
+          <path d="M7.2 13.4c1.7-4 2.9-3.3 3.3 0.2c0.5-2.8 1.7-2.8 2.3 0c0.7-0.8 1.8-1.6 3.9-2.9" strokeWidth={1.5} />
+          <path d="M7.6 17h8.8" strokeWidth={1.1} />
         </>
       ) : null}
 
@@ -120,6 +140,15 @@ export function OutcomePie({ slices, size = 260 }: { slices: readonly OutcomeSli
   // A hairline of ground between slices, so two adjoining colours never touch.
   const gap = 0.012;
 
+  /*
+   * The seal set on the band itself. Sized off the band rather than fixed, so
+   * the same drawing works at the 260 the demand board asks for and the 288
+   * the results page does, and it never grows wider than the ring it sits in.
+   */
+  const badgeR = thickness * 0.3;
+  const markSize = Math.round(badgeR * 1.5);
+  const midRadius = (r - 1 + inner) / 2;
+
   let start = -Math.PI / 2;
   const arcs = slices
     .filter((s) => s.count > 0)
@@ -128,6 +157,7 @@ export function OutcomePie({ slices, size = 260 }: { slices: readonly OutcomeSli
       const sweep = share * Math.PI * 2;
       const a0 = start + gap / 2;
       const a1 = start + sweep - gap / 2;
+      const mid = start + sweep / 2;
       start += sweep;
 
       const pt = (angle: number, radius: number) => [r + radius * Math.cos(angle), r + radius * Math.sin(angle)];
@@ -135,11 +165,14 @@ export function OutcomePie({ slices, size = 260 }: { slices: readonly OutcomeSli
       const [x1, y1] = pt(a1, r - 1);
       const [x2, y2] = pt(a1, inner);
       const [x3, y3] = pt(a0, inner);
+      const [mx, my] = pt(mid, midRadius);
       const large = sweep - gap > Math.PI ? 1 : 0;
 
       return {
         ...s,
         share,
+        mx,
+        my,
         d: [
           `M ${x0} ${y0}`,
           `A ${r - 1} ${r - 1} 0 ${large} 1 ${x1} ${y1}`,
@@ -168,6 +201,12 @@ export function OutcomePie({ slices, size = 260 }: { slices: readonly OutcomeSli
                 rather than a flat outline drawn on it. */}
             <filter id={`${gradId}-drop`} x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="var(--ink)" floodOpacity="0.2" />
+            </filter>
+
+            {/* The seals sit on the band, so they carry their own short shadow
+                rather than the ring's — a stamp pressed onto the disc. */}
+            <filter id={`${gradId}-stamp`} x="-60%" y="-60%" width="220%" height="220%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="var(--ink)" floodOpacity="0.26" />
             </filter>
 
             {/* Light rakes from the upper left across the whole product, and the
@@ -203,6 +242,28 @@ export function OutcomePie({ slices, size = 260 }: { slices: readonly OutcomeSli
               />
             ))}
           </g>
+
+          {/*
+            Each finding's mark, pressed onto the slice it belongs to.
+            The key beside the circle teaches the three shapes; putting the shape
+            on the arc itself is what lets a reader match a slice to a finding
+            without matching two colours, which is the one thing this drawing
+            cannot ask of everyone who reads it.
+          */}
+          {arcs.map((a, i) => (
+            <g
+              key={`${a.key}-seal`}
+              className="reveal"
+              data-delay={String((i % 5) + 1)}
+              style={{ color: a.colour }}
+              filter={`url(#${gradId}-stamp)`}
+            >
+              <circle cx={a.mx} cy={a.my} r={badgeR} fill="var(--sheet)" stroke="currentColor" strokeWidth="1.4" />
+              <g transform={`translate(${a.mx - markSize / 2} ${a.my - markSize / 2})`}>
+                <OutcomeMark outcome={a.key} size={markSize} />
+              </g>
+            </g>
+          ))}
 
           {/* The milled edge of a seal, drawn inside the ring — the same object
               the three findings are marks of. */}
@@ -241,13 +302,20 @@ export function OutcomePie({ slices, size = 260 }: { slices: readonly OutcomeSli
           <li key={s.key} className="reveal mb-3 last:mb-0" data-delay={String((i % 5) + 1)}>
             <div
               className={[
-                'swift flex items-start gap-4 rounded-sheet border border-rule border-l-2 px-4 py-4',
+                'swift flex items-start gap-4 rounded-sheet border border-rule border-l-2 px-5 py-5 shadow-sheet',
                 OUTCOME_WASH[s.key],
                 OUTCOME_RAIL[s.key],
               ].join(' ')}
             >
-              <span className={['mt-1', OUTCOME_INK[s.key]].join(' ')}>
-                <OutcomeMark outcome={s.key} size={24} />
+              {/* The mark set into a well of its own, so it reads as a stamp
+                  lying on the row rather than as a bullet in front of it. */}
+              <span
+                className={[
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-rule bg-sheet shadow-sheet',
+                  OUTCOME_INK[s.key],
+                ].join(' ')}
+              >
+                <OutcomeMark outcome={s.key} size={22} />
               </span>
 
               <span className="min-w-0 flex-1">
@@ -265,7 +333,9 @@ export function OutcomePie({ slices, size = 260 }: { slices: readonly OutcomeSli
 
               <span className="shrink-0 text-right">
                 <span className="block font-display text-figure text-ink tnum">{s.count}</span>
-                <span className="block text-micro text-ink-soft tnum">{percent((s.count / total) * 100, 0)}</span>
+                <span className="mt-1.5 inline-block rounded-pill border border-rule bg-sheet px-2 py-0.5 text-micro text-ink-soft tnum">
+                  {percent((s.count / total) * 100, 0)}
+                </span>
               </span>
             </div>
           </li>

@@ -2,7 +2,13 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useResults } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
-import { OutcomePie, OutcomeMark, OUTCOME_INK, type OutcomeKey } from '@/components/domain/OutcomePie';
+import {
+  OutcomePie,
+  OutcomeMark,
+  OUTCOME_INK,
+  OUTCOME_CHIP,
+  type OutcomeKey,
+} from '@/components/domain/OutcomePie';
 import { useReveal } from '@/lib/reveal';
 import { LedgerTable } from '@/components/ledger/LedgerTable';
 import { TableSkeleton } from '@/components/ui/Feedback';
@@ -79,11 +85,14 @@ function SignedGlyph() {
  */
 function MarkKey() {
   return (
-    <div className="rounded-sheet border border-rule bg-sheet px-4 py-3.5 shadow-sheet">
-      <p className="field-label mb-2.5">What the marks mean</p>
-      <ul className="flex flex-wrap gap-x-5 gap-y-2">
+    <div className="sheet px-5 py-4 shadow-raise">
+      <p className="field-label mb-3">What the marks mean</p>
+      <ul className="flex flex-wrap gap-2">
         {FINDINGS.map((f) => (
-          <li key={f.key} className="flex items-center gap-2">
+          <li
+            key={f.key}
+            className={['swift flex items-center gap-2 rounded-pill border px-3 py-1.5', OUTCOME_CHIP[f.key]].join(' ')}
+          >
             <span className={OUTCOME_INK[f.key]}>
               <OutcomeMark outcome={f.key} size={18} />
             </span>
@@ -137,7 +146,9 @@ export default function Results() {
             the answer survives a photocopy and a reader who cannot separate the colours.
           </p>
 
-          <div className="sheet reveal mt-8 p-5 shadow-raise md:p-10">
+          {/* A feature panel takes the large radius rather than the sheet's, so
+              the drawing inside it reads as a plate rather than as a form. */}
+          <div className="sheet reveal mt-8 rounded-block p-5 shadow-raise md:p-10">
             <OutcomePie slices={slices} size={288} />
 
             <p className="mt-8 flex items-start gap-3 rounded-sheet border-l-2 border-l-verify bg-verify-wash px-4 py-3.5 text-micro text-ink">
@@ -153,14 +164,18 @@ export default function Results() {
         </div>
       </section>
 
-      <section className="full-bleed border-t border-rule bg-sheet px-4 py-12 md:px-6 lg:py-16">
+      {/* The register is paper laid on the board, so the band behind it stays
+          the board. On sheet the panel's own body had no edge to show. */}
+      <section className="full-bleed border-t border-rule bg-ledger px-4 py-12 md:px-6 lg:py-16">
         <div className="mx-auto max-w-shell">
           {/*
             One panel around the whole register: a washed band that says what the
             table is and teaches its marks, and the ledger itself below it.
           */}
           <div className="reveal rounded-block border border-rule bg-sheet shadow-raise">
-            <div className="rounded-t-block border-b border-rule bg-ledger px-5 py-6 md:px-8 md:py-7">
+            {/* The head is washed in the ink a validated finding is signed in,
+                so the register announces itself as the cleared record it is. */}
+            <div className="rounded-t-block border-b border-rule bg-verify-wash px-5 py-6 md:px-8 md:py-7">
               <div className="flex flex-wrap items-end justify-between gap-6">
                 <div className="max-w-doc">
                   <Eyebrow>Case by case</Eyebrow>
@@ -174,7 +189,7 @@ export default function Results() {
               </div>
             </div>
 
-            <div className="p-4 md:p-6">
+            <div className="p-5 md:p-6">
               <QueryState
                 query={query}
                 errorTitle="Unable to load results."
@@ -183,7 +198,7 @@ export default function Results() {
                 empty={{
                   title: 'No pilots have completed yet.',
                   body: 'Results appear here as soon as an independent validator signs a report.',
-                  action: { label: 'See open challenges', to: '/challenges' },
+                  action: { label: 'See open challenges', to: link('/challenges') },
                 }}
               >
                 {(payload) => (

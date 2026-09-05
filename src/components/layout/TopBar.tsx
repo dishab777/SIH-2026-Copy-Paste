@@ -10,8 +10,10 @@ import { Popover } from '@/components/ui/Overlay';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Mark } from '@/components/layout/Mark';
+import { ViewSwitcher } from '@/components/layout/ViewSwitcher';
+import { PUBLIC_LINKS } from '@/config/nav';
 import { useUi } from '@/store/ui';
-import { usePortalBase } from '@/lib/portal';
+import { portalHref, usePortalBase } from '@/lib/portal';
 import i18n from '@/i18n';
 
 /**
@@ -28,7 +30,7 @@ const PORTAL: Record<string, { label: string; home: string }> = {
   '/a': { label: 'Programme management', home: '/a' },
 };
 
-export function TopBar({ links }: { links: { to: string; label: string; end?: boolean }[] }) {
+export function TopBar({ links }: { links: readonly { to: string; label: string; end?: boolean }[] }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSession();
@@ -41,7 +43,8 @@ export function TopBar({ links }: { links: { to: string; label: string; end?: bo
   const scenario = useUi((s) => s.scenario);
   const setScenarioState = useUi((s) => s.setScenario);
   const queryClient = useQueryClient();
-  const portal = PORTAL[usePortalBase()];
+  const base = usePortalBase();
+  const portal = PORTAL[base];
 
   useEffect(() => {
     void i18n.changeLanguage(locale);
@@ -126,24 +129,28 @@ export function TopBar({ links }: { links: { to: string; label: string; end?: bo
   return (
     <header data-scrolled={scrolled} className="topbar sticky top-0 z-40">
       <div className="mx-auto flex h-16 max-w-shell items-center gap-4 px-4 md:px-6">
-        <Link to={portal.home} className="group flex min-w-0 shrink items-center gap-2.5 no-underline md:shrink-0">
+        <div className="group flex min-w-0 shrink items-center gap-2.5 md:shrink-0">
           {/* The mark sits in a lit well, so it reads as an object on the bar
-              rather than an icon printed on it. */}
-          <span className="mark-well settle shrink-0 group-hover:-translate-y-0.5">
+              rather than an icon printed on it. It is decoration: the wordmark
+              beside it is the link, so the bar does not carry two adjacent
+              links to the same place. */}
+          <span aria-hidden className="mark-well settle shrink-0 group-hover:-translate-y-0.5">
             <Mark size={22} tone="deep" className="settle group-hover:rotate-[-6deg]" />
           </span>
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate font-display text-mark tracking-mega text-deep-ink">
+          <span className="flex min-w-0 flex-col items-start">
+            <Link
+              to={portal.home}
+              className="max-w-full truncate font-display text-mark tracking-mega text-deep-ink no-underline"
+            >
               {t('app.name')}
-            </span>
-            {/* Which portal you are standing in, always. Following a shared page
-                between portals used to be indistinguishable from being thrown
-                onto the public site. */}
-            <span className="mt-1 hidden truncate text-chip uppercase tracking-stamp text-saffron md:inline">
-              {portal.label}
-            </span>
+            </Link>
+            {/* Which portal you are standing in — and, now, how to get to the
+                public site and back. The chip already answered "where am I";
+                answering "how do I leave" from the same place is one control
+                rather than a seventh in the cluster on the right. */}
+            <ViewSwitcher label={portal.label} />
           </span>
-        </Link>
+        </div>
 
         {/*
           One lit pill slides between destinations rather than a highlight
@@ -154,7 +161,7 @@ export function TopBar({ links }: { links: { to: string; label: string; end?: bo
         <nav
           ref={navRef}
           aria-label="Primary"
-          className="nav-strip scroll-quiet relative ml-2 hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto lg:flex"
+          className="nav-strip relative ml-2 hidden min-w-0 flex-1 items-center gap-0.5 wide:flex"
         >
           {links.map((l) => (
             <NavLink
@@ -373,24 +380,43 @@ export function TopBar({ links }: { links: { to: string; label: string; end?: bo
                     </li>
                   ))}
                 </ul>
+                {/*
+                  Signed out, the only control here used to be "Sign out" —
+                  which had already happened, and left no way back in. Whoever
+                  is browsing as a member of the public gets the way in instead.
+                */}
                 <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    block
-                    onClick={() => {
-                      signIn.mutate(
-                        { role: 'public' },
-                        {
-                          onSuccess: () => {
-                            navigate('/');
-                            close();
+                  {user ? (
+                    <Button
+                      size="sm"
+                      block
+                      onClick={() => {
+                        signIn.mutate(
+                          { role: 'public' },
+                          {
+                            onSuccess: () => {
+                              navigate('/');
+                              close();
+                            },
                           },
-                        },
-                      );
-                    }}
-                  >
-                    {t('app.signOut')}
-                  </Button>
+                        );
+                      }}
+                    >
+                      {t('app.signOut')}
+                    </Button>
+                  ) : (
+                    <Button
+                      tone="primary"
+                      size="sm"
+                      block
+                      onClick={() => {
+                        navigate('/login');
+                        close();
+                      }}
+                    >
+                      {t('app.signIn')}
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -410,7 +436,7 @@ export function TopBar({ links }: { links: { to: string; label: string; end?: bo
                 onClick={onClick}
                 {...aria}
                 aria-label="Menu"
-                className="press flex h-8 items-center gap-2 rounded-control border border-deep-rule px-2 text-label text-deep-dim hover:border-deep-dim hover:text-deep-ink lg:hidden"
+                className="press flex h-8 items-center gap-2 rounded-control border border-deep-rule px-2 text-label text-deep-dim hover:border-deep-dim hover:text-deep-ink wide:hidden"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden focusable="false">
                   <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -420,25 +446,58 @@ export function TopBar({ links }: { links: { to: string; label: string; end?: bo
             )}
           >
             {(close) => (
-              <ul className="w-[240px]">
-                {links.map((l) => (
-                  <li key={l.to}>
-                    <NavLink
-                      to={l.to}
-                      end={l.end}
-                      onClick={close}
-                      className={({ isActive }) =>
-                        [
-                          'block border-b border-rule py-2 text-body no-underline last:border-b-0',
-                          isActive ? 'text-verify' : 'text-ink hover:text-verify',
-                        ].join(' ')
-                      }
-                    >
-                      {l.label}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
+              <div className="w-[260px]">
+                <p className="field-label mb-1">{portal.label}</p>
+                <ul>
+                  {links.map((l) => (
+                    <li key={l.to}>
+                      <NavLink
+                        to={l.to}
+                        end={l.end}
+                        onClick={close}
+                        className={({ isActive }) =>
+                          [
+                            'block border-b border-rule py-2 text-body no-underline last:border-b-0',
+                            isActive ? 'text-verify' : 'text-ink hover:text-verify',
+                          ].join(' ')
+                        }
+                      >
+                        {l.label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+
+                {/*
+                  The chip that carries the public site is hidden below md, so
+                  on a phone this is the only route to it. The same seven
+                  destinations, resolved through the portal you are in.
+                */}
+                {base === '' ? null : (
+                  <>
+                    <p className="field-label mb-1 mt-5">The public site</p>
+                    <ul>
+                      {PUBLIC_LINKS.map((l) => (
+                        <li key={l.to}>
+                          <NavLink
+                            to={l.to === '/' ? '/' : portalHref(base, l.to)}
+                            end={l.end}
+                            onClick={close}
+                            className={({ isActive }) =>
+                              [
+                                'block border-b border-rule py-2 text-body no-underline last:border-b-0',
+                                isActive ? 'text-verify' : 'text-ink hover:text-verify',
+                              ].join(' ')
+                            }
+                          >
+                            {l.label}
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
             )}
           </Popover>
 

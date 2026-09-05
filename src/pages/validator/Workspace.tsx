@@ -131,7 +131,7 @@ export default function ValidatorWorkspace() {
                   </p>
                   <p className="mt-2 text-micro text-ink-soft">
                     Published on{' '}
-                    <Link to="/results" className="underline underline-offset-2">
+                    <Link to="/v/results" className="underline underline-offset-2">
                       the public results page
                     </Link>{' '}
                     whether or not the pilot succeeded.
