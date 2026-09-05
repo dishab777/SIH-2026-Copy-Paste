@@ -21,15 +21,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
 
     # Supabase Configuration
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://wxxfhjlagolpbmebzfui.supabase.co")
-    SUPABASE_KEY: str = os.getenv(
-        "SUPABASE_KEY",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4eGZoamxhZ29scGJtZWJ6ZnVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNzUxNTUsImV4cCI6MjEwMzk1MTE1NX0.VrulINQUystWeEMS5K7-XyuRzAIwUxsX7J-BT6XUUhM"
-    )
-    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = os.getenv(
-        "SUPABASE_SERVICE_ROLE_KEY",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4eGZoamxhZ29scGJtZWJ6ZnVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM3NTE1NSwiZXhwIjoyMTAzOTUxMTU1fQ.fsrvGeVL9V_H4auLcrBEKF_LcXgEcg5C4se_C5XV3F0"
-    )
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = os.getenv("SUPABASE_SERVICE_ROLE_KEY", None)
     SUPABASE_JWT_SECRET: Optional[str] = os.getenv("SUPABASE_JWT_SECRET", None)
     STORAGE_BUCKET_NAME: str = os.getenv("STORAGE_BUCKET_NAME", "milestone-evidence")
 
