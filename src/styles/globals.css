@@ -198,8 +198,18 @@
    * A panel that wants the wash to move behind it — a sticky index, a popover,
    * anything that floats over content. Real blur, and only where it is cheap.
    */
+  /*
+   * 92%, not 78%.
+   *
+   * Every popover in the top bar opens inside `.topbar`, which is the deep
+   * ground — so at 78% the panel composited to a mid grey and `--ink-soft` on it
+   * measured 3.75 : 1. The same panel over paper measured 6.2. A surface whose
+   * legibility depends on what happens to be behind it is not a surface; this is
+   * opaque enough that the ground no longer decides, and still translucent
+   * enough that the page moves behind it.
+   */
   .glass {
-    background-color: color-mix(in srgb, var(--sheet) 78%, transparent);
+    background-color: color-mix(in srgb, var(--sheet) 92%, transparent);
     backdrop-filter: saturate(1.3) blur(14px);
     -webkit-backdrop-filter: saturate(1.3) blur(14px);
     border: 1px solid var(--rule);
@@ -501,6 +511,12 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /*
+   * The stage run keeps a short glide under this setting rather than losing its
+   * transition entirely — see the carve-out beside the carousel's own rules,
+   * which is where it has to live to win the cascade.
+   */
 
   .seal-stamp-in {
     animation: none;
@@ -991,6 +1007,194 @@ button.slab:hover,
   background: var(--saffron);
 }
 
+/* ------------------------------------------------------------------ carousel
+ * A run of cards read one at a time, with the two beside it left visible.
+ *
+ * The nine stages were nine equal blocks in a grid, which said "here are nine
+ * things" — true, and not the point. They happen in order, so they are read in
+ * order: the one you are on is lifted and lit, the ones either side are set
+ * back, and moving between them is a single continuous slide rather than a
+ * repaint. What is behind and what is ahead stays on screen the whole time,
+ * because that is the fact the section exists to state.
+ */
+.carousel-viewport {
+  overflow: hidden;
+  /*
+   * Room above and below for the live card to stand proud without the clip
+   * cutting its raised edge off. The negative margin gives the space straight
+   * back, so the section's own rhythm is unchanged and the markers underneath
+   * do not move.
+   */
+  padding-block: 18px;
+  margin-block: -18px;
+}
+
+.carousel-track {
+  display: flex;
+  align-items: stretch;
+  --card: 380px;
+  --gap: 24px;
+  --step: calc(var(--card) + var(--gap));
+  /*
+   * The travel, held once so the track, the cards and the lit rail arrive
+   * together instead of as three separate movements. The curve leaves quickly
+   * and settles slowly, which is what makes the run read as one card handing
+   * over to the next rather than a strip being dragged.
+   */
+  --glide: 780ms;
+  --glide-ease: cubic-bezier(0.34, 0.8, 0.24, 1);
+  gap: var(--gap);
+  /* Percentage padding resolves against the viewport, so the first card starts
+     centred and the transform below only has to count steps. */
+  padding-inline: calc(50% - var(--card) / 2);
+  /*
+   * The transform is set inline by the component, not here.
+   *
+   * It used to be `translateX(calc(var(--at) * var(--step) * -1))` with `--at`
+   * set inline. The computed transform did change — measured, -404px to -808px
+   * — but in a single frame, because a transition does not start when the only
+   * declaration that changed is an unregistered custom property. Measured both
+   * ways after the `transition: none` below was lifted: driven by the variable,
+   * one distinct position through a switch; set as a declaration, an
+   * interpolated run.
+   */
+  transition: transform var(--glide) var(--glide-ease);
+  will-change: transform;
+}
+
+@media (max-width: 767.98px) {
+  .carousel-track {
+    --card: min(380px, 78vw);
+    --gap: 16px;
+  }
+}
+
+.carousel-card {
+  flex: 0 0 var(--card);
+  width: var(--card);
+  transform: scale(0.93);
+  opacity: 0.4;
+  /*
+   * Brightness leads the movement. The card arriving from the right is already
+   * lifting as it lands, and the one leaving has dimmed before it reaches the
+   * edge — so the eye is handed from one to the next, rather than watching two
+   * equal cards trade places.
+   */
+  transition:
+    transform var(--glide) var(--glide-ease),
+    opacity calc(var(--glide) * 0.7) ease-out;
+}
+
+/*
+ * The card you are on stands slightly proud of the run.
+ *
+ * The neighbours sit at 0.93; the live one goes past 1 rather than back to it,
+ * so it reads as lifted off the strip instead of merely un-shrunk. Four and a
+ * half percent and a few pixels of rise is the whole effect — enough that the
+ * eye lands on it without being told, small enough that it never looks like a
+ * card being thrown at the reader.
+ *
+ * It is raised in the stacking order too, or the card arriving from the right
+ * would pass over the one being read on its way in.
+ */
+.carousel-card[data-live='true'] {
+  transform: scale(1.045) translateY(-5px);
+  opacity: 1;
+  z-index: 1;
+}
+
+/* The card you are on carries the lit edge; the others carry a dead rule, so
+   the accent is never spent on something you are not reading. */
+.carousel-card[data-live='true'] .carousel-rail {
+  background: linear-gradient(90deg, var(--saffron), var(--signal));
+}
+
+.carousel-rail {
+  height: 3px;
+  border-radius: var(--radius-pill) var(--radius-pill) 0 0;
+  background: var(--deep-rule);
+  transition: background 520ms ease;
+}
+
+/* The step marker under the run. Filled is where you are, and it widens rather
+   than only changing colour, so it reads without hue. */
+.carousel-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--deep-rule);
+  transition:
+    width 320ms cubic-bezier(0.2, 0.9, 0.3, 1),
+    background 320ms ease;
+}
+
+.carousel-dot[data-live='true'] {
+  width: 26px;
+  background: var(--saffron);
+}
+
+/*
+ * While the run is advancing itself, the live marker fills over the dwell
+ * rather than simply sitting there: the reader can see the move coming, which
+ * is the difference between a carousel that is helpful and one that snatches
+ * the card away mid-sentence. It restarts on its own because only the live
+ * marker carries the attribute, and "live" moves.
+ */
+.carousel-dot[data-running='true'] {
+  position: relative;
+  overflow: hidden;
+  background: var(--deep-rule);
+}
+
+.carousel-dot[data-running='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--saffron);
+  transform-origin: left center;
+  animation: carousel-dwell var(--dwell, 5000ms) linear forwards;
+}
+
+@keyframes carousel-dwell {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * This block used to say `transition: none`, which sets transition-property
+   * to none — so the run did not animate at all under the setting, and because
+   * it sits after the carousel's own rules it won outright. Every duration and
+   * easing curve on the track above was unreachable.
+   *
+   * A run that changes which card is being read needs *some* transition or the
+   * content is simply replaced between two frames, which is harder to follow
+   * than the movement the setting is guarding against. So the glide survives at
+   * roughly half its length, on one axis, easing out.
+   *
+   * The lift on the live card stays. A four-percent scale over four hundred
+   * milliseconds is not the kind of movement this setting exists to suppress,
+   * and it is what tells the reader which of the three cards on screen is the
+   * one being read.
+   */
+  .carousel-track,
+  .carousel-card {
+    --glide: 400ms;
+    --glide-ease: ease-out;
+    transition-duration: 400ms !important;
+  }
+
+  .carousel-rail,
+  .carousel-dot {
+    transition: none;
+  }
+}
+
 /* ---------------------------------------------------------------- ticker */
 .ticker {
   display: flex;
@@ -1216,14 +1420,54 @@ button.slab:hover,
  * the product look like it was changing colour at random. Scrolling changes
  * how far off the page it sits, and nothing else.
  */
+/*
+ * The two bars at the head of every page are paper, not the deep ground.
+ *
+ * They were the same near-black green as the mastheads, which made the head of
+ * the product a heavy band before a word of it was read. On paper they sit
+ * lighter than the page itself — `--sheet` above the body's `--ledger` — so the
+ * bars read as a raised surface rather than a lid.
+ *
+ * Every control inside them is written in `deep-*` classes, so rather than
+ * rewriting forty class names the tokens are redefined for the two bars alone.
+ * Two are deliberately NOT redefined: `--deep` stays near-black because it is
+ * the *text* colour on the saffron pill, and `--saffron` stays bright because
+ * it is that pill's fill. The handful of places that used saffron as text are
+ * changed to the darker cut in the component instead.
+ */
+.topbar,
+.gov-strip {
+  --deep-ink: var(--ink);
+  --deep-dim: var(--ink-soft);
+  --deep-rule: var(--rule);
+  --deep-2: var(--ledger);
+  --deep-3: var(--sheet);
+  /* The lit green reads at 1.6 : 1 on paper. The noting green is the same hue
+     at 7.7 : 1, and it is what "cleared" is written in everywhere else. */
+  --signal: var(--verify);
+  color: var(--ink);
+}
+
+/* The upper strip: one step down from the bar, so the two read as a frame
+   around the navigation rather than one thick band. */
+.gov-strip {
+  background-color: var(--ledger);
+}
+
 .topbar {
   position: sticky;
-  background-color: var(--deep);
-  background-image: linear-gradient(180deg, var(--deep-2) 0%, var(--deep) 100%);
-  color: var(--deep-ink);
+  background-color: var(--sheet);
+  background-image: linear-gradient(180deg, var(--sheet) 0%, var(--ledger) 100%);
   transition:
     box-shadow var(--settle) var(--ease),
     background-color var(--settle) var(--ease);
+}
+
+/* The lit inset that separated the pill track from the deep ground is
+   invisible on paper; it takes a soft ink tint instead. */
+.topbar .nav-strip {
+  background: rgba(26, 29, 26, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(26, 29, 26, 0.05);
 }
 
 /*
@@ -1237,12 +1481,13 @@ button.slab:hover,
   position: absolute;
   inset: auto 0 0 0;
   height: 1px;
+  /* The same two accents, in the cuts that carry on paper. */
   background: linear-gradient(
     90deg,
-    rgba(255, 176, 58, 0.55) 0%,
-    rgba(78, 227, 159, 0.4) 42%,
-    var(--deep-rule) 78%,
-    var(--deep-rule) 100%
+    rgba(145, 86, 0, 0.55) 0%,
+    rgba(31, 92, 61, 0.4) 42%,
+    var(--rule) 78%,
+    var(--rule) 100%
   );
 }
 
@@ -1253,14 +1498,17 @@ button.slab:hover,
  * top of the page does not reach. 92% keeps the glass and measures 5.8 : 1.
  */
 .topbar[data-scrolled='true'] {
-  background-color: color-mix(in srgb, var(--deep) 92%, transparent);
-  backdrop-filter: saturate(1.5) blur(20px);
-  -webkit-backdrop-filter: saturate(1.5) blur(20px);
+  background-color: color-mix(in srgb, var(--sheet) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(20px);
+  -webkit-backdrop-filter: saturate(1.4) blur(20px);
   box-shadow: var(--elev-lift);
 }
 
-.topbar :focus-visible {
-  outline: 2px solid var(--saffron);
+/* The lit saffron measures under 2 : 1 on paper; the noting cut is the same
+   hue at 5.7 : 1, which is what a focus ring has to clear. */
+.topbar :focus-visible,
+.gov-strip :focus-visible {
+  outline: 2px solid var(--saffron-ink);
   outline-offset: 3px;
 }
 
@@ -1375,7 +1623,8 @@ button.slab:hover,
   inset: auto 0 -1px 0;
   height: 2px;
   transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--saffron), var(--signal));
+  /* Both accents in their paper cuts, so the line reads against a white bar. */
+  background: linear-gradient(90deg, var(--saffron-ink), var(--verify));
   transition: transform 90ms linear;
   pointer-events: none;
 }

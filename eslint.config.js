@@ -16,7 +16,7 @@ export default tseslint.config(
   // Build-time checks run in node, not the browser.
   {
     files: ['scripts/**/*.mjs'],
-    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+    languageOptions: { globals: { console: 'readonly', process: 'readonly', URL: 'readonly' } },
   },
 
   /*

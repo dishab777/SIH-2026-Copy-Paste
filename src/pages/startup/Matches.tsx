@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePortalLink } from '@/lib/portal';
 import { useMatches } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
 import { PageHeader } from '@/components/layout/Shell';
 import { TableSkeleton, EmptyState, InlineNote } from '@/components/ui/Feedback';
 import { Badge } from '@/components/ui/Badge';
 import { LinkButton } from '@/components/ui/Button';
+import { Pager } from '@/components/ui/Pager';
 import { SlaClock } from '@/components/domain/SlaClock';
-import { daysBetween, money, num } from '@/lib/format';
+import { countOf, daysBetween, money, num } from '@/lib/format';
 import type { MatchReason } from '@/services/hooks';
 import type { Challenge, Department } from '@/types/models';
 
@@ -21,6 +24,7 @@ function MatchRow({
   reasons: MatchReason[];
   nearMiss?: boolean;
 }) {
+  const link = usePortalLink();
   const matched = reasons.filter((r) => r.matched);
   const unmatched = reasons.filter((r) => !r.matched);
 
@@ -28,7 +32,7 @@ function MatchRow({
     <li className="ledger-row px-4 py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-doc">
-          <Link to={`/challenges/${challenge.slug}`} className="text-h3 text-ink underline underline-offset-2">
+          <Link to={link(`/challenges/${challenge.slug}`)} className="text-h3 text-ink underline underline-offset-2">
             {challenge.title}
           </Link>
           <p className="mt-0.5 text-micro text-ink-soft tnum">
@@ -85,12 +89,60 @@ function MatchRow({
             {num(challenge.applicantCount)} applicants so far
           </span>
           {challenge.eligibility.relaxationsAvailable ? <Badge tone="verify">Startup relief</Badge> : null}
-          <LinkButton size="sm" tone={nearMiss ? 'secondary' : 'primary'} to={`/challenges/${challenge.slug}`}>
+          <LinkButton size="sm" tone={nearMiss ? 'secondary' : 'primary'} to={link(`/challenges/${challenge.slug}`)}>
             Read the challenge
           </LinkButton>
         </div>
       </div>
     </li>
+  );
+}
+
+const PER_PAGE = 5;
+
+/**
+ * A register of matches, five to a page.
+ *
+ * Each entry carries the challenge, its outcome, every weighted reason it
+ * matched and every reason it did not — which is the point of the page, and
+ * also why twenty of them on one scroll is unreadable. The tables in this
+ * product have paged since they were written; this is the same pager, on the
+ * one list that was not a table.
+ */
+function MatchRegister({
+  entries,
+  nearMiss,
+}: {
+  entries: { challenge: Challenge; department: Department; reasons: MatchReason[] }[];
+  nearMiss?: boolean;
+}) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(entries.length / PER_PAGE));
+  // A list that shrinks under you should not leave you on page four of two.
+  const at = Math.min(page, pages - 1);
+  const from = at * PER_PAGE;
+  const visible = entries.slice(from, from + PER_PAGE);
+
+  return (
+    <div className="sheet-flat overflow-hidden">
+      <ul>
+        {visible.map((f) => (
+          <MatchRow
+            key={f.challenge.id}
+            challenge={f.challenge}
+            department={f.department}
+            reasons={f.reasons}
+            nearMiss={nearMiss}
+          />
+        ))}
+      </ul>
+      <Pager
+        page={at}
+        pages={pages}
+        onChange={setPage}
+        summary={`Showing ${from + 1}–${Math.min(from + PER_PAGE, entries.length)} of ${entries.length}`}
+      />
+    </div>
   );
 }
 
@@ -145,9 +197,14 @@ export default function StartupMatches() {
             </section>
 
             <section aria-labelledby="fits-heading">
-              <h2 id="fits-heading" className="mb-3 text-h2 text-ink">
-                Challenges that fit you
-              </h2>
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+                <h2 id="fits-heading" className="text-h2 text-ink">
+                  Challenges that fit you
+                </h2>
+                <p className="text-micro text-ink-soft tnum">
+                  {countOf(payload.data.fits.length, 'challenge clears', 'challenges clear')} the fit threshold
+                </p>
+              </div>
               {payload.data.fits.length === 0 ? (
                 <EmptyState
                   title="Nothing clears the fit threshold right now."
@@ -155,16 +212,7 @@ export default function StartupMatches() {
                   action={{ label: 'Browse every open challenge', to: '/s/challenges' }}
                 />
               ) : (
-                <ul className="sheet-flat">
-                  {payload.data.fits.map((f) => (
-                    <MatchRow
-                      key={f.challenge.id}
-                      challenge={f.challenge}
-                      department={f.department}
-                      reasons={f.reasons}
-                    />
-                  ))}
-                </ul>
+                <MatchRegister entries={payload.data.fits} />
               )}
             </section>
 
@@ -181,17 +229,7 @@ export default function StartupMatches() {
                   Every open challenge either fits you or is too far from your profile to be worth listing.
                 </InlineNote>
               ) : (
-                <ul className="sheet-flat">
-                  {payload.data.nearMisses.map((f) => (
-                    <MatchRow
-                      key={f.challenge.id}
-                      challenge={f.challenge}
-                      department={f.department}
-                      reasons={f.reasons}
-                      nearMiss
-                    />
-                  ))}
-                </ul>
+                <MatchRegister entries={payload.data.nearMisses} nearMiss />
               )}
             </section>
           </div>

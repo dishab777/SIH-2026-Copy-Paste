@@ -1,14 +1,21 @@
+import { useTranslation } from 'react-i18next';
 import { Shell } from '@/components/layout/Shell';
-import { PUBLIC_LINKS } from '@/config/nav';
+import { publicLinksFor } from '@/config/nav';
+import { useSession } from '@/services/hooks';
 
 /**
  * The public site.
  *
- * It is not a role's dashboard and it is not a department's home screen: it is
- * what anyone sees without signing in. The destinations live in
- * `@/config/nav` because the view switcher under the wordmark offers the same
- * seven from inside every portal.
+ * It is not a role's dashboard and not a department's home screen: it is the
+ * notice board. Signed out, it carries the two destinations that are open to
+ * anyone — what departments need, and how the programme works. Everything else
+ * mounted here is behind `RequireAccount`, so offering the link to a visitor who
+ * cannot open it would only be a promise the next click breaks.
  */
 export function PublicShell() {
-  return <Shell links={PUBLIC_LINKS} />;
+  const { t } = useTranslation();
+  const session = useSession();
+  const signedIn = (session.data?.data.role ?? 'public') !== 'public';
+  const links = publicLinksFor(signedIn).map((l) => ({ to: l.to, end: l.end, label: t(l.labelKey) }));
+  return <Shell links={links} />;
 }

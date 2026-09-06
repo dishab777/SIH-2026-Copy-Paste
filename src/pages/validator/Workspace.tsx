@@ -5,7 +5,7 @@ import { QueryState } from '@/components/layout/QueryState';
 import { PageHeader } from '@/components/layout/Shell';
 import { PanelSkeleton, InlineNote } from '@/components/ui/Feedback';
 import { KeyValueSheet, ComparisonMatrix } from '@/components/ledger/Ledger';
-import { MeasurementChart, achievement } from '@/components/charts/MeasurementChart';
+import { MeasurementChart, progress } from '@/components/charts/MeasurementChart';
 import { EvidenceVault } from '@/components/domain/Milestones';
 import { SealStamp } from '@/components/domain/SealStamp';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
@@ -69,12 +69,20 @@ export default function ValidatorWorkspace() {
         const report = d.report;
         const signed = report?.status === 'signed';
         const f = findings ?? [];
-        const complete =
-          f.length > 0 &&
-          f.every((x) => x.observed.trim().length >= 10 && x.note.trim().length >= 10) &&
-          (rederivation?.records.trim().length ?? 0) >= 20 &&
-          Boolean(securityAudit?.done) &&
-          Boolean(attestation?.signed);
+        /*
+         * What is still missing, named rather than counted. The bar used to
+         * recite the whole list of requirements whenever any one of them was
+         * short, which told a validator who had finished four of five things
+         * nothing at all about which one was left.
+         */
+        const outstanding: string[] = [];
+        if (f.length === 0) outstanding.push('a finding against every success criterion');
+        if (f.some((x) => x.observed.trim().length < 10)) outstanding.push('what you observed, on every criterion');
+        if (f.some((x) => x.note.trim().length < 10)) outstanding.push('a note on each criterion saying how you tested it');
+        if ((rederivation?.records.trim().length ?? 0) < 20) outstanding.push('the records you re-derived the figure from');
+        if (!securityAudit?.done) outstanding.push('the security audit');
+        if (!attestation?.signed) outstanding.push('the data-handling attestation');
+        const complete = outstanding.length === 0;
 
         function persist(): void {
           saveReport.mutate(
@@ -560,25 +568,57 @@ export default function ValidatorWorkspace() {
                   </section>
 
                   {!signed ? (
-                    <div className="sticky bottom-0 -mx-4 border-t border-rule bg-sheet px-4 py-4 md:-mx-6 md:px-6">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t-2 border-t-ink bg-sheet px-4 py-5 shadow-lift md:-mx-6 md:px-6">
+                      {/* The saffron hairline that marks a decision surface everywhere
+                          else in this product, so the bar reads as the end of the file
+                          rather than as the next paragraph in it. */}
+                      <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-saffron" />
+                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-doc">
+                          <p className="field-label mb-1.5 flex items-center gap-2 !text-saffron-ink">
+                            <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
+                            Gate 5 — pilot succeeded
+                          </p>
                           <p className="text-body text-ink">
                             Signing publishes this report with a checksum, on the public results page, whether or not the
                             pilot succeeded. It cannot be edited afterwards.
                           </p>
-                          {!complete ? (
-                            <p className="mt-1 text-micro text-seal">
-                              Still needed: a finding on every criterion, the records you used, the security audit and
-                              the data attestation.
-                            </p>
-                          ) : null}
+                          {complete ? null : (
+                            <div className="mt-3 border-l-2 border-l-hold bg-hold-wash px-4 py-2.5">
+                              <p className="text-label text-ink">
+                                {countOf(outstanding.length, 'thing', 'things')} still to record
+                              </p>
+                              <ul className="mt-1 flex flex-col gap-0.5">
+                                {outstanding.map((o) => (
+                                  <li key={o} className="text-micro text-ink-soft">
+                                    {o}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex shrink-0 gap-3">
+                        <div className="flex shrink-0 flex-wrap gap-3">
                           <Button loading={saveReport.isPending} loadingLabel="Saving" onClick={persist}>
                             Save draft
                           </Button>
-                          <Button tone="primary" disabled={!complete} onClick={() => setSigning(true)}>
+                          {/*
+                            Unavailable rather than disabled: it keeps its contrast and
+                            its place in the keyboard path, and says why it cannot be
+                            used yet instead of fading out and leaving the validator to
+                            guess. A disabled control at 45% opacity on a white bar was
+                            the single least visible thing on this screen.
+                          */}
+                          <Button
+                            tone="primary"
+                            unavailableReason={
+                              complete ? undefined : `Not yet: ${outstanding.join('; ')}.`
+                            }
+                            onUnavailable={() =>
+                              pushToast('hold', 'The report is not complete yet.', outstanding.join('; '))
+                            }
+                            onClick={() => setSigning(true)}
+                          >
                             Sign the validation report
                           </Button>
                         </div>
@@ -697,7 +737,7 @@ export default function ValidatorWorkspace() {
                 {d.kpis[0] ? (
                   <p className="text-micro text-ink-soft tnum">
                     Headline measure: {d.kpis[0].name} at {num(d.kpis[0].current, 1)} {d.kpis[0].unit}, which is{' '}
-                    {percent(achievement(d.kpis[0]))} of target.
+                    {percent(progress(d.kpis[0]))} of target.
                   </p>
                 ) : null}
                 <Badge tone="hold">A signed report cannot be edited</Badge>

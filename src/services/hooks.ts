@@ -53,7 +53,11 @@ export function useAccounts(): UseQueryResult<Fetched<User[]>> {
   return useQuery({ queryKey: ['accounts'], queryFn: () => api.get<User[]>('/api/auth/accounts') });
 }
 
-export function useSignIn(): UseMutationResult<Fetched<{ user: User | null }>, Error, { userId?: string; role?: Role }> {
+export function useSignIn(): UseMutationResult<
+  Fetched<{ user: User | null }>,
+  Error,
+  { userId?: string; role?: Role; email?: string; password?: string }
+> {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input) => api.post<{ user: User | null }>('/api/auth/login', input),
@@ -61,12 +65,26 @@ export function useSignIn(): UseMutationResult<Fetched<{ user: User | null }>, E
   });
 }
 
+export interface RegistrationReceipt {
+  registered: boolean;
+  kind: 'startup' | 'expert';
+  email: string;
+  reference: string;
+}
+
+/**
+ * Register a startup or an expert.
+ *
+ * The whole form goes to the API, which re-validates it against the same Zod
+ * schema the form used. What comes back is a receipt — never an echo of what
+ * was typed, and never the password.
+ */
 export function useRegister(): UseMutationResult<
-  Fetched<{ registered: boolean }>,
+  Fetched<RegistrationReceipt>,
   Error,
-  { kind: 'startup' | 'expert'; name?: string; legalName?: string; email: string }
+  { kind: 'startup' | 'expert' } & Record<string, unknown>
 > {
-  return useMutation({ mutationFn: (input) => api.post<{ registered: boolean }>('/api/auth/register', input) });
+  return useMutation({ mutationFn: (input) => api.post<RegistrationReceipt>('/api/auth/register', input) });
 }
 
 /* --------------------------------------------------------------- challenges */
@@ -89,10 +107,22 @@ export interface ChallengeDetail {
   pilot: Pilot | null;
 }
 
-export function useChallenge(id: string | undefined): UseQueryResult<Fetched<ChallengeDetail>> {
+/**
+ * The challenge, as one of two documents.
+ *
+ * 'notice' is what the programme published: the problem, the outcome, the
+ * rubric, the closing date — readable by any account, from any department.
+ * 'case-file' is the department's own working record behind it, and the API
+ * refuses that to anyone outside the department that owns it. The workspace
+ * asks for the file; the public challenge page asks for the notice.
+ */
+export function useChallenge(
+  id: string | undefined,
+  view: 'notice' | 'case-file' = 'notice',
+): UseQueryResult<Fetched<ChallengeDetail>> {
   return useQuery({
-    queryKey: ['challenge', id],
-    queryFn: () => api.get<ChallengeDetail>(`/api/challenges/${id}`),
+    queryKey: ['challenge', id, view],
+    queryFn: () => api.get<ChallengeDetail>(`/api/challenges/${id}${view === 'case-file' ? '?view=case-file' : ''}`),
     enabled: Boolean(id),
   });
 }
@@ -436,7 +466,15 @@ export interface GatePayload {
   decisionRoleRequired: string;
   reasonMinChars: number;
   waiverAuthority: string;
-  entity: { id: string; type: 'challenge' | 'pilot'; caseId: string; title: string; departmentId: string; budgetPaise: number };
+  entity: {
+    id: string;
+    type: 'challenge' | 'pilot';
+    caseId: string;
+    title: string;
+    departmentId: string;
+    departmentName: string;
+    budgetPaise: number;
+  };
   ladder: GateRecord[];
   audit: AuditEvent[];
 }
@@ -879,18 +917,44 @@ export function useTransparency(): UseQueryResult<Fetched<TransparencyPayload>> 
   return useQuery({ queryKey: ['transparency'], queryFn: () => api.get<TransparencyPayload>('/api/transparency') });
 }
 
+/**
+ * A published result.
+ *
+ * Everything except `id` and `outcome` is optional, because the server sends
+ * two different projections: signed out you get the outcome and nothing that
+ * identifies anybody, signed in you get the whole record. The type says so, so
+ * a component cannot read a company name it was never sent and quietly render
+ * `undefined` on a public page.
+ */
 export interface ResultRow {
-  pilot: Pilot;
-  challenge: Challenge;
-  department: Department;
-  startup: Startup;
-  claimed: string;
-  validated: string;
+  id: string;
   outcome: ValidationReport['outcome'] | null;
-  validator: string | null;
-  finalDecision: string | null;
-  pathway: string | null;
-  reason: string | null;
+  pilot?: Pilot;
+  challenge?: Challenge;
+  department?: Department;
+  startup?: Startup;
+  claimed?: string;
+  validated?: string;
+  validator?: string | null;
+  finalDecision?: string | null;
+  pathway?: string | null;
+  reason?: string | null;
+}
+
+/** A result with its parties attached — what a signed-in reader is sent. */
+export type IdentifiedResultRow = ResultRow &
+  Required<Pick<ResultRow, 'pilot' | 'challenge' | 'department' | 'startup' | 'claimed' | 'validated'>>;
+
+/**
+ * Narrow a payload to the rows that actually carry their parties.
+ *
+ * Signed out the server sends the outcome alone, so a page that renders a
+ * company name asks this first rather than assuming. It is a guard, not a cast:
+ * if the projection ever changes, the page renders nothing rather than
+ * `undefined`.
+ */
+export function isIdentified(row: ResultRow): row is IdentifiedResultRow {
+  return Boolean(row.pilot && row.challenge && row.department && row.startup);
 }
 
 export function useResults(): UseQueryResult<Fetched<ResultRow[]>> {

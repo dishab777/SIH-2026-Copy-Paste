@@ -127,10 +127,15 @@ export const RBAC: Matrix = {
     challenge: ['view', 'create', 'edit'],
     application: ['view'],
     evaluation: ['view'],
+    // Runs the case day to day, so reads the gate ladder and the pathway note
+    // on it. Deciding either is 'approve', which stays with the admin and the
+    // procurement officer below.
+    gate: ['view'],
     pilot: ['view', 'edit'],
     milestone: ['view', 'edit'],
     payment: ['view'],
     validation: ['view'],
+    procurement: ['view'],
     audit: ['view', 'export'],
   },
   department_admin: {
@@ -222,6 +227,6 @@ export function roleLabel(role: Role): string {
   return ROLES.find((r) => r.id === role)?.label ?? role;
 }
 
-export function portalFor(role: Role): string {
+export function portalFor(role: Role): RoleDefinition['portal'] {
   return ROLES.find((r) => r.id === role)?.portal ?? '/';
 }

@@ -41,6 +41,7 @@ export default function AdminUsers() {
             {tab === 'users' ? (
               <LedgerTable
                 caption="User accounts"
+                pageSize={12}
                 exportName="prayog-users"
                 rows={payload.data.users}
                 rowKey={(u) => u.user.id}

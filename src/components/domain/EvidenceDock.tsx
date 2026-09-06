@@ -39,7 +39,7 @@ function Attachments({ items, onOpen }: { items: Evidence[]; onOpen?: (item: Evi
               <button
                 type="button"
                 onClick={() => onOpen?.(e)}
-                className="type-register block w-full truncate text-left text-body text-ink underline underline-offset-2 hover:text-verify"
+                className="swift type-register block w-full truncate text-left text-body text-ink hover:text-verify hover:underline hover:underline-offset-2"
               >
                 {e.fileName}
               </button>
@@ -141,7 +141,7 @@ function DockBody({ evidence, audit, next, linked, onOpenEvidence }: EvidenceDoc
           </button>
         ))}
       </div>
-      <div className="max-h-[70vh] overflow-auto scroll-quiet">
+      <div className="max-h-[calc(100vh-200px)] overflow-auto scroll-quiet">
         {tab === 'attachments' ? <Attachments items={evidence} onOpen={onOpenEvidence} /> : null}
         {tab === 'audit' ? <Trail items={audit} /> : null}
         {tab === 'next' ? <Next items={next} /> : null}
@@ -161,7 +161,7 @@ export function EvidenceDock(props: EvidenceDockProps & { collapsed?: boolean; o
         type="button"
         onClick={onToggle}
         aria-expanded={false}
-        className="hidden w-8 shrink-0 border-l border-rule bg-sheet text-micro text-ink-soft hover:text-ink lg:block"
+        className="swift hidden w-8 shrink-0 self-start rounded-block border border-rule bg-sheet text-micro text-ink-soft hover:border-ink hover:text-ink lg:sticky lg:top-20 lg:block"
       >
         {/* The closed edge still says what is inside, the way a file tab does. */}
         <span className="block rotate-180 py-4 [writing-mode:vertical-rl]">
@@ -173,10 +173,10 @@ export function EvidenceDock(props: EvidenceDockProps & { collapsed?: boolean; o
   return (
     <aside
       aria-label="Evidence dock"
-      className="hidden w-[340px] shrink-0 border-l border-rule bg-sheet lg:block"
+      className="hidden w-[340px] shrink-0 self-start rounded-block border border-rule bg-sheet shadow-sheet lg:sticky lg:top-20 lg:block"
       style={{ width: 'var(--dock-width)' }}
     >
-      <div className="flex items-center justify-between border-b border-ink px-4 py-2">
+      <div className="flex items-center justify-between rounded-t-block border-b border-ink bg-ledger px-4 py-2.5">
         <h2 className="field-label !text-ink">Evidence dock</h2>
         {onToggle ? (
           <button type="button" onClick={onToggle} className="text-micro text-ink-soft underline underline-offset-2">

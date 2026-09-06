@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usePortalLink } from '@/lib/portal';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { GATES, gateSlaDays } from '@/config/gates';
 import { citationShort } from '@/config/policies';
@@ -24,18 +26,20 @@ import { useUi } from '@/store/ui';
 import { PrayogApiError } from '@/services/api';
 
 const TABS = [
-  { id: 'framing', label: 'Framing' },
-  { id: 'approvals', label: 'Approvals' },
-  { id: 'applicants', label: 'Applicants' },
-  { id: 'clarifications', label: 'Clarifications' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'timeline', label: 'Timeline' },
+  { id: 'framing', labelKey: 'deptCases.workspace.tabs.framing' },
+  { id: 'approvals', labelKey: 'deptCases.workspace.tabs.approvals' },
+  { id: 'applicants', labelKey: 'deptCases.workspace.tabs.applicants' },
+  { id: 'clarifications', labelKey: 'deptCases.workspace.tabs.clarifications' },
+  { id: 'documents', labelKey: 'deptCases.workspace.tabs.documents' },
+  { id: 'timeline', labelKey: 'deptCases.workspace.tabs.timeline' },
 ];
 
 export default function ChallengeWorkspace() {
+  const link = usePortalLink();
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const query = useChallenge(id);
+  const query = useChallenge(id, 'case-file');
   const answer = useAnswerClarification();
   const session = useSession();
   const pushToast = useUi((s) => s.pushToast);
@@ -46,20 +50,24 @@ export default function ChallengeWorkspace() {
   const clarificationWindow = policyNumber('sla.clarification.days');
 
   return (
-    <QueryState query={query} errorTitle="Unable to load this challenge." loading={<PanelSkeleton lines={10} />}>
+    <QueryState
+      query={query}
+      errorTitle={t('deptCases.workspace.errorTitle')}
+      loading={<PanelSkeleton lines={10} />}
+    >
       {(payload) => {
         const { challenge: c, department, owner, clarifications, gates, pilot } = payload.data;
         const openGate = gates.find((g) => g.status === 'open' || g.status === 'blocked');
         const unanswered = clarifications.filter((q) => !q.answer);
         const isPublic = ['open', 'closing_soon', 'closed', 'awarded'].includes(c.status);
-        const agreement = TEMPLATES.find((t) => t.id === c.legal.templateId);
+        const agreement = TEMPLATES.find((tpl) => tpl.id === c.legal.templateId);
 
         return (
           <div>
             <div className="mb-4">
               <Breadcrumb
                 items={[
-                  { label: 'Challenge pipeline', to: '/d/challenges' },
+                  { label: t('deptCases.breadcrumb.pipeline'), to: '/d/challenges' },
                   { label: c.caseId },
                 ]}
               />
@@ -80,7 +88,10 @@ export default function ChallengeWorkspace() {
                         title: c.title,
                         requiredAction: c.blocked
                           ? c.blocked.reason
-                          : `Decide gate ${openGate.gate.slice(1)} — ${GATES.find((g) => g.id === openGate.gate)?.name}`,
+                          : t('deptCases.workspace.decideGate', {
+                              number: openGate.gate.slice(1),
+                              gate: GATES.find((g) => g.id === openGate.gate)?.name,
+                            }),
                         ownerId: openGate.ownerId,
                         ownerName: owner?.name ?? '',
                         waitingSinceDays: daysBetween(c.gateEnteredOn),
@@ -97,7 +108,7 @@ export default function ChallengeWorkspace() {
                   ? [
                       {
                         caseId: pilot.caseId,
-                        label: `Pilot — ${pilot.title}`,
+                        label: t('deptCases.workspace.linkedPilot', { title: pilot.title }),
                         to: `/d/pilots/${pilot.id}`,
                         detail: pilot.status.replace(/_/g, ' '),
                       },
@@ -107,9 +118,9 @@ export default function ChallengeWorkspace() {
                   ? [
                       {
                         caseId: c.caseId,
-                        label: 'Public page as applicants see it',
+                        label: t('deptCases.workspace.linkedPublicLabel'),
                         to: `/challenges/${c.slug}`,
-                        detail: 'Opens the published document',
+                        detail: t('deptCases.workspace.linkedPublicDetail'),
                       },
                     ]
                   : []),
@@ -130,47 +141,51 @@ export default function ChallengeWorkspace() {
                   actions={
                     openGate ? (
                       <LinkButton tone="primary" size="sm" to={`/d/gates/${openGate.id}`}>
-                        Open gate {openGate.gate.slice(1)}
+                        {t('deptCases.workspace.openGate', { number: openGate.gate.slice(1) })}
                       </LinkButton>
                     ) : undefined
                   }
-                  extra={[{ label: 'Applicants', value: <span className="tnum">{c.applicantCount}</span> }]}
+                  extra={[
+                    {
+                      label: t('deptCases.workspace.applicants'),
+                      value: <span className="tnum">{c.applicantCount}</span>,
+                    },
+                  ]}
                 />
 
                 {c.blocked ? (
-                  <InlineNote tone="seal" title={`This case is blocked at ${c.currentGate}`}>
+                  <InlineNote tone="seal" title={t('deptCases.workspace.blockedTitle', { gate: c.currentGate })}>
                     <p className="max-w-doc">{c.blocked.reason}</p>
-                    <p className="mt-1 text-micro text-ink-soft">Blocked since {day(c.blocked.since)}.</p>
+                    <p className="mt-1 text-micro text-ink-soft">
+                      {t('deptCases.workspace.blockedSince', { date: day(c.blocked.since) })}
+                    </p>
                   </InlineNote>
                 ) : null}
 
                 {!isPublic ? (
-                  <InlineNote tone="hold" title="Nothing here is public yet">
-                    This challenge becomes visible on the demand board the moment gate 1 clears. Until then only this
-                    department and the programme management unit can read it.
+                  <InlineNote tone="hold" title={t('deptCases.workspace.notPublicTitle')}>
+                    {t('deptCases.workspace.notPublicBody')}
                   </InlineNote>
                 ) : (
-                  <InlineNote tone="verify" title="This challenge is public">
-                    <p>
-                      Applicants can read every section of it, including the evaluation rubric they will be scored
-                      against. Answers to clarifications are published to everyone, not sent privately.
-                    </p>
+                  <InlineNote tone="verify" title={t('deptCases.workspace.publicTitle')}>
+                    <p>{t('deptCases.workspace.publicBody')}</p>
                     <p className="mt-2">
-                      <Link to={`/challenges/${c.slug}`} className="underline underline-offset-2">
-                        Open the page as an applicant sees it
+                      <Link to={link(`/challenges/${c.slug}`)} className="underline underline-offset-2">
+                        {t('deptCases.workspace.publicLink')}
                       </Link>
                     </p>
                   </InlineNote>
                 )}
 
                 <Tabs
-                  items={TABS.map((t) =>
-                    t.id === 'clarifications' && unanswered.length
-                      ? { ...t, count: unanswered.length }
-                      : t.id === 'applicants'
-                        ? { ...t, count: c.applicantCount }
-                        : t,
-                  )}
+                  items={TABS.map((item) => {
+                    const entry = { id: item.id, label: t(item.labelKey) };
+                    return item.id === 'clarifications' && unanswered.length
+                      ? { ...entry, count: unanswered.length }
+                      : item.id === 'applicants'
+                        ? { ...entry, count: c.applicantCount }
+                        : entry;
+                  })}
                   value={tab}
                   onChange={setTab}
                 >
@@ -188,8 +203,7 @@ export default function ChallengeWorkspace() {
                   {tab === 'approvals' ? (
                     <div className="flex flex-col gap-6">
                       <p className="max-w-doc text-body text-ink-soft">
-                        Each gate names one owner. A gate that has cleared shows its written reason; a gate that is open
-                        shows who is holding it and for how long against the configured window.
+                        {t('deptCases.workspace.approvals.lead')}
                       </p>
                       <ul className="sheet-flat">
                         {gates.map((g) => {
@@ -215,15 +229,23 @@ export default function ChallengeWorkspace() {
                                     {g.gate} · {def.name}
                                   </p>
                                   <p className="mt-0.5 text-micro text-ink-soft">
-                                    Owner: {def.ownerRole.replace(/_/g, ' ')} · {citationShort('PRAYOG-SOP-4')}
+                                    {t('deptCases.workspace.approvals.owner', {
+                                      role: def.ownerRole.replace(/_/g, ' '),
+                                      citation: citationShort('PRAYOG-SOP-4'),
+                                    })}
                                   </p>
                                   {g.status === 'cleared' ? (
                                     <p className="mt-2 max-w-doc font-doc text-doc text-ink">{g.reason}</p>
                                   ) : g.status === 'future' ? (
-                                    <p className="mt-2 text-body text-ink-soft">Not reached yet.</p>
+                                    <p className="mt-2 text-body text-ink-soft">
+                                      {t('deptCases.workspace.approvals.notReached')}
+                                    </p>
                                   ) : (
                                     <p className="mt-2 text-body text-ink">
-                                      Waiting on {def.ownerRole.replace(/_/g, ' ')} for {g.dwellDays} days.
+                                      {t('deptCases.workspace.approvals.waiting', {
+                                        role: def.ownerRole.replace(/_/g, ' '),
+                                        count: g.dwellDays,
+                                      })}
                                     </p>
                                   )}
                                 </div>
@@ -244,15 +266,17 @@ export default function ChallengeWorkspace() {
                                           onClick={() =>
                                             pushToast(
                                               'verify',
-                                              `Nudge sent to the ${def.ownerRole.replace(/_/g, ' ')}.`,
-                                              'Recorded against the case so the delay is visible either way.',
+                                              t('deptCases.workspace.approvals.nudgeToast', {
+                                                role: def.ownerRole.replace(/_/g, ' '),
+                                              }),
+                                              t('deptCases.workspace.approvals.nudgeToastDetail'),
                                             )
                                           }
                                         >
-                                          Nudge the owner
+                                          {t('deptCases.workspace.approvals.nudge')}
                                         </Button>
                                         <Button size="sm" tone="primary" onClick={() => navigate(`/d/gates/${g.id}`)}>
-                                          Open the gate
+                                          {t('deptCases.workspace.openTheGate')}
                                         </Button>
                                       </div>
                                     </>
@@ -270,40 +294,53 @@ export default function ChallengeWorkspace() {
                     <div>
                       {c.applicantCount === 0 ? (
                         <EmptyState
-                          title="No applications yet."
+                          title={t('deptCases.workspace.applicantsEmptyTitle')}
                           body={
                             isPublic
-                              ? 'Applications appear here as they are submitted. The screening ledger runs the eligibility rules automatically.'
-                              : 'Applications can only arrive once gate 1 clears and the challenge is published.'
+                              ? t('deptCases.workspace.applicantsEmptyBodyPublic')
+                              : t('deptCases.workspace.applicantsEmptyBodyDraft')
                           }
                           action={
                             isPublic
-                              ? { label: 'Open the screening ledger', to: `/d/challenges/${c.id}/applications` }
-                              : { label: 'Open the gate', to: openGate ? `/d/gates/${openGate.id}` : '/d/challenges' }
+                              ? {
+                                  label: t('deptCases.workspace.openScreening'),
+                                  to: `/d/challenges/${c.id}/applications`,
+                                }
+                              : {
+                                  label: t('deptCases.workspace.openTheGate'),
+                                  to: openGate ? `/d/gates/${openGate.id}` : '/d/challenges',
+                                }
                           }
                         />
                       ) : (
                         <div className="flex flex-col gap-4">
                           <KeyValueSheet
-                            title="Applicant pool"
+                            title={t('deptCases.workspace.pool.title')}
                             items={[
-                              { label: 'Applications received', value: <span className="tnum">{c.applicantCount}</span> },
                               {
-                                label: 'Applications close',
-                                value: c.timeline.closesOn ? day(c.timeline.closesOn) : 'Closed',
+                                label: t('deptCases.workspace.pool.received'),
+                                value: <span className="tnum">{c.applicantCount}</span>,
                               },
-                              { label: 'Rubric in force', value: c.rubricId },
                               {
-                                label: 'Rules in force',
-                                value: `${countOf(c.eligibility.ruleIds.length, 'rule')}, versions frozen at publication`,
+                                label: t('deptCases.workspace.pool.closes'),
+                                value: c.timeline.closesOn ? day(c.timeline.closesOn) : t('deptCases.workspace.pool.closed'),
+                              },
+                              { label: t('deptCases.workspace.pool.rubric'), value: c.rubricId },
+                              {
+                                label: t('deptCases.workspace.pool.rules'),
+                                value: t('deptCases.workspace.pool.rulesValue', {
+                                  count: c.eligibility.ruleIds.length,
+                                }),
                               },
                             ]}
                           />
                           <div className="flex flex-wrap gap-3">
                             <LinkButton tone="primary" to={`/d/challenges/${c.id}/applications`}>
-                              Open the screening ledger
+                              {t('deptCases.workspace.openScreening')}
                             </LinkButton>
-                            <LinkButton to={`/d/challenges/${c.id}/evaluation`}>Open the evaluation panel</LinkButton>
+                            <LinkButton to={`/d/challenges/${c.id}/evaluation`}>
+                              {t('deptCases.workspace.openEvaluation')}
+                            </LinkButton>
                           </div>
                         </div>
                       )}

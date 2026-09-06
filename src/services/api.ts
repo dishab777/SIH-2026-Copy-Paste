@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import type { ApiError, ApiResponse } from '@/types/models';
 
 export class PrayogApiError extends Error {
@@ -25,9 +26,40 @@ export interface Fetched<T> {
 async function call<T>(path: string, init?: RequestInit): Promise<Fetched<T>> {
   const response = await fetch(path, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      /*
+       * The language the reader is reading, so the API can answer in it. The
+       * interface chrome translates through `t()`; the *content* — a challenge
+       * title, a department, a problem statement, a unit — cannot, because it
+       * is data. This is where a real deployment would negotiate it too.
+       */
+      'Accept-Language': i18n.language || 'en',
+      ...(init?.headers ?? {}),
+    },
   });
-  const body = (await response.json()) as ApiResponse<T>;
+  /*
+   * A body that is not JSON means the request never reached the mock API — the
+   * dev server answered it with index.html, which happens while the service
+   * worker is still taking control of the page. Saying that beats letting a
+   * SyntaxError surface as "the service did not respond", which sends people
+   * looking for an outage that is not happening.
+   */
+  const raw = await response.text();
+  let body: ApiResponse<T>;
+  try {
+    body = JSON.parse(raw) as ApiResponse<T>;
+  } catch {
+    throw new PrayogApiError(response.status, {
+      code: 'MOCK_API_UNAVAILABLE',
+      message: 'The mock API has not started yet.',
+      details: [
+        'This request reached the dev server instead of the mock service worker, which usually means the worker was still starting.',
+        'Reloading the page starts it again.',
+      ],
+    });
+  }
+
   if (!body.success) throw new PrayogApiError(response.status, body.error);
   return { data: body.data, servedAt: body.servedAt, message: body.message };
 }

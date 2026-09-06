@@ -102,6 +102,7 @@ export default function AdminAudit() {
 
             <LedgerTable
               caption="Programme audit trail"
+              pageSize={20}
               exportName="prayog-audit-trail"
               rows={payload.data.items}
               rowKey={(a) => a.id}

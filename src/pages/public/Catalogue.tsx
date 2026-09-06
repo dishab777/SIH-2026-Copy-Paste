@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useCatalogue } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
@@ -192,6 +193,7 @@ function SegmentedFilter({
   onChange: (id: string) => void;
   controls: string;
 }) {
+  const { t } = useTranslation();
   const index = Math.max(
     0,
     items.findIndex((i) => i.id === value),
@@ -200,7 +202,7 @@ function SegmentedFilter({
     <div className="scroll-quiet max-w-full overflow-x-auto rounded-pill border border-rule bg-ledger p-1.5 shadow-sheet">
       <div
         role="tablist"
-        aria-label="Filter the catalogue by sector"
+        aria-label={t('pubResults.catalogue.filterAria')}
         className="relative grid min-w-max"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       >
@@ -272,6 +274,7 @@ function CoverageDial({
   sectorsInView: number;
   sectorsTotal: number;
 }) {
+  const { t } = useTranslation();
   const size = 152;
   const mid = size / 2;
   const rOuter = 58;
@@ -333,7 +336,7 @@ function CoverageDial({
           textAnchor="middle"
           style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.075em', fill: 'var(--ink-soft)' }}
         >
-          IN VIEW
+          {t('pubResults.catalogue.dial.inView')}
         </text>
       </svg>
 
@@ -343,18 +346,18 @@ function CoverageDial({
             <span aria-hidden className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-verify" />
             <span className="text-micro text-ink-soft">
               <span className="tnum block font-semibold text-ink">
-                {num(shown)} of {num(total)}
+                {t('pubResults.catalogue.dial.ratio', { shown: num(shown), total: num(total) })}
               </span>
-              validated entries in view
+              {t('pubResults.catalogue.dial.entries')}
             </span>
           </li>
           <li className="flex items-start gap-2.5">
             <span aria-hidden className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-saffron" />
             <span className="text-micro text-ink-soft">
               <span className="tnum block font-semibold text-ink">
-                {num(sectorsInView)} of {num(sectorsTotal)}
+                {t('pubResults.catalogue.dial.ratio', { shown: num(sectorsInView), total: num(sectorsTotal) })}
               </span>
-              sectors covered by the filter
+              {t('pubResults.catalogue.dial.sectors')}
             </span>
           </li>
         </ul>
@@ -367,8 +370,8 @@ function CoverageDial({
 
 const CHAIN: readonly { title: string; body: string; icon: ReactNode }[] = [
   {
-    title: 'Proved in service',
-    body: 'A department ran the pilot on live work and recorded the result against criteria it had written down before anything was procured.',
+    title: 'Proved in a real pilot',
+    body: 'The solution ran in a live department against a measured baseline, on a paid milestone contract, and the measurements were kept.',
     icon: (
       <Glyph size={20}>
         <path d="M4.4 17.4h15.2" />

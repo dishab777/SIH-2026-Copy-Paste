@@ -90,15 +90,18 @@ export function FileCover({
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 pl-8 md:grid-cols-3 lg:grid-cols-5">
+      {/* Three across at most. The cover sits in the working column of a
+          three-column case screen, so the space it has is nothing like the
+          width of the window the breakpoint is measuring. */}
+      <dl className="grid grid-cols-2 pl-8 md:grid-cols-3">
         {cells.map((c, i) => (
           <div
             key={c.label}
             className={[
-              'border-b border-rule px-4 py-3',
+              'border-b border-rule px-4 py-3 last:border-b-0',
               i % 2 === 0 ? 'border-r' : '',
-              'md:border-r md:last:border-r-0',
-              'lg:border-b-0',
+              'md:border-r',
+              i % 3 === 2 ? 'md:border-r-0' : '',
             ].join(' ')}
           >
             <dt className="field-label">{c.label}</dt>

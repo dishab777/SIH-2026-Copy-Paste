@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TEMPLATES, CLAUSES, type ClauseDefinition, type TemplateDefinition } from '@/config/templates';
 import { citationShort } from '@/config/policies';
 import { useReveal } from '@/lib/reveal';
+import { SectionRail } from '@/components/patterns/SectionRail';
 import { Modal } from '@/components/ui/Overlay';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -245,7 +246,13 @@ function ClauseEntry({ clause: c }: { clause: ClauseDefinition }) {
 
 export default function Templates() {
   const [preview, setPreview] = useState<TemplateDefinition | null>(null);
-  useReveal([]);
+  /*
+   * Which group of clauses is on the page. Not which one you have scrolled
+   * past — the rail chooses, and the other five are not rendered. Intellectual
+   * property first because it is the question a founder came here with.
+   */
+  const [group, setGroup] = useState(CLAUSE_SECTIONS[0]?.id ?? 'ip');
+  useReveal([group]);
 
   const totalUse = TEMPLATES.reduce((sum, t) => sum + t.usageCount, 0);
 
@@ -492,13 +499,17 @@ export default function Templates() {
                   wherever it appears.
                 </p>
                 <p className="mt-5">
-                  <a
-                    href="#clauses-ip"
-                    className="swift inline-flex items-center gap-2 rounded-pill border border-verify bg-sheet px-5 py-2 text-label font-semibold text-verify no-underline hover:bg-verify hover:text-white"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGroup('ip');
+                      document.getElementById('clause-panel')?.scrollIntoView({ block: 'start' });
+                    }}
+                    className="swift inline-flex items-center gap-2 rounded-pill border border-verify bg-sheet px-5 py-2 text-label font-semibold text-verify hover:bg-verify hover:text-white"
                   >
                     Read all three IP positions
                     <Icon name="arrow" size={16} />
-                  </a>
+                  </button>
                 </p>
               </div>
 
@@ -522,35 +533,26 @@ export default function Templates() {
             </div>
           </section>
 
-          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <nav aria-label="Clause index" className="glass h-max rounded-block p-5 lg:sticky lg:top-20">
-              <p className="field-label mb-3">Grouped by question</p>
-              <ol className="flex flex-col gap-1">
-                {CLAUSE_SECTIONS.map((g) => (
-                  <li key={g.id}>
-                    <a
-                      href={`#clauses-${g.id}`}
-                      className="swift flex items-center justify-between gap-3 rounded-control px-3 py-2 text-body text-ink-soft no-underline hover:bg-verify-wash hover:text-verify"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon name={g.glyph} size={16} />
-                        {g.title}
-                      </span>
-                      <span className="text-micro tnum">{g.clauses.length}</span>
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-
-            <div className="flex min-w-0 flex-col gap-6">
-              {CLAUSE_SECTIONS.map((g, i) => (
+          <div className="mt-8">
+            <SectionRail
+              title="Grouped by question"
+              note="One group at a time. The clause library runs to nine standing clauses and reading all of them to find one is not reading."
+              label="Clause groups"
+              value={group}
+              onChange={setGroup}
+              sections={CLAUSE_SECTIONS.map((g) => ({
+                id: g.id,
+                label: g.title,
+                count: g.clauses.length,
+                glyph: <Icon name={g.glyph} size={16} />,
+              }))}
+            >
+              {CLAUSE_SECTIONS.filter((g) => g.id === group).map((g) => (
                 <section
                   key={g.id}
-                  id={`clauses-${g.id}`}
+                  id="clause-panel"
                   aria-labelledby={`clauses-${g.id}-title`}
-                  className="reveal sheet-flat overflow-hidden rounded-block shadow-sheet"
-                  data-delay={String((i % 5) + 1)}
+                  className="sheet-flat overflow-hidden rounded-block shadow-sheet scroll-mt-24"
                 >
                   <header className="flex flex-wrap items-start gap-4 border-b border-rule bg-ledger px-5 py-5 md:px-6">
                     <span
@@ -577,7 +579,7 @@ export default function Templates() {
                   </ul>
                 </section>
               ))}
-            </div>
+            </SectionRail>
           </div>
         </div>
       </section>

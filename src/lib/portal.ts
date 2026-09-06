@@ -19,15 +19,22 @@ const PORTALS = ['/s', '/d', '/e', '/v', '/a'] as const;
 export type PortalBase = '' | (typeof PORTALS)[number];
 
 /**
- * Where a portal's own route already owns the path, so the shared page cannot
- * be mounted alongside it. `/d/challenges` is the department's pipeline, not
- * the public list; `/a/templates` is the editable register, not the library.
- * A link to one of these falls back to the public route — deliberately, and in
- * only two places.
+ * Where a portal's own route already owns the path, so the shared page is
+ * mounted at a different one inside that portal.
+ *
+ * `/d/challenges` is the department's pipeline, not the public register, and
+ * `/a/templates` is the editable library, not the read-only one. This used to
+ * resolve by falling back to the public route, which is exactly the leak this
+ * module exists to prevent: a nodal officer following "read the published
+ * notice" from their own case screen was dropped onto the public shell with
+ * the public navigation and no way back to their portal.
+ *
+ * So each of those two paths has an alias inside the portal that owns the
+ * conflict, and the shared page is mounted there.
  */
-const OCCUPIED: Partial<Record<PortalBase, readonly string[]>> = {
-  '/d': ['/challenges'],
-  '/a': ['/templates'],
+const ALIAS: Partial<Record<PortalBase, readonly { from: string; to: string }[]>> = {
+  '/d': [{ from: '/challenges', to: '/d/notices' }],
+  '/a': [{ from: '/templates', to: '/a/library' }],
 };
 
 export function portalBaseFor(pathname: string): PortalBase {
@@ -41,8 +48,10 @@ export function usePortalBase(): PortalBase {
 
 export function portalHref(base: PortalBase, path: string): string {
   if (!base) return path;
-  const taken = OCCUPIED[base] ?? [];
-  if (taken.some((t) => path === t || path.startsWith(`${t}/`))) return path;
+  for (const { from, to } of ALIAS[base] ?? []) {
+    if (path === from) return to;
+    if (path.startsWith(`${from}/`)) return `${to}${path.slice(from.length)}`;
+  }
   return `${base}${path}`;
 }
 

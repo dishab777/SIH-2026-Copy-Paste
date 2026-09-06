@@ -41,6 +41,7 @@ export default function AdminTemplates() {
           >
             {tab === 'templates' ? (
               <LedgerTable
+                title="Template library"
                 caption="Template library"
                 exportName="prayog-templates"
                 rows={payload.data.templates}
@@ -114,7 +115,8 @@ export default function AdminTemplates() {
                 </InlineNote>
 
                 <LedgerTable
-                  caption="Clause library"
+                  title="Standing clauses"
+                caption="Clause library"
                   exportName="prayog-clauses"
                   rows={payload.data.clauses}
                   rowKey={(c) => c.id}

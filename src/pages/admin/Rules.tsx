@@ -56,9 +56,12 @@ export default function AdminRules() {
 
           return (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_420px]">
-              <div>
+              {/* min-w-0: a 1fr track has min-width:auto, so without this the
+                  register's intrinsic width pushes the 420px editor off screen. */}
+              <div className="min-w-0">
                 <LedgerTable
                   caption="Eligibility rules"
+                  pageSize={10}
                   exportName="prayog-eligibility-rules"
                   rows={payload.data.rules}
                   rowKey={(r) => r.rule.id}

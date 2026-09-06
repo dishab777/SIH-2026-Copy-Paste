@@ -87,8 +87,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       className={[
         'press inline-flex items-center justify-center gap-2 rounded-pill font-semibold',
         'disabled:cursor-not-allowed disabled:opacity-45',
-        unavailable ? 'cursor-not-allowed opacity-45' : '',
-        TONE[tone],
+        /*
+         * An unavailable control keeps its contrast. Fading the tone to 45%
+         * made the one thing a reader was looking for the least legible object
+         * on the screen — a pale green pill on a white bar — which is the
+         * opposite of what "you cannot do this yet" should look like. It reads
+         * as an inert control instead: muted fill, dashed edge, full-strength
+         * label, and the reason on hover and on click.
+         */
+        unavailable
+          ? 'cursor-not-allowed border border-dashed border-rule bg-ledger text-ink-soft shadow-none'
+          : TONE[tone],
         SIZE[size],
         block ? 'w-full' : '',
         className,

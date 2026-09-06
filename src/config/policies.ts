@@ -393,6 +393,68 @@ export const CONFIG_PARAMETERS: readonly ConfigParameter[] = [
     changedBy: 'Finance · K. Iyer',
     note: 'Below this, the pathway note must argue non-price grounds.',
   },
+
+  /*
+   * Account and sign-up.
+   *
+   * A password rule is a security policy, and a security policy that lives in
+   * a component cannot be changed without a release. These are read by the
+   * sign-up form, by the strength meter and by the server-side check inside the
+   * mock register handler — one source, three readers.
+   */
+  {
+    key: 'account.password.minLength',
+    group: 'account',
+    label: 'Minimum password length',
+    value: 12,
+    unit: 'characters',
+    citation: 'PRAYOG-SOP-11',
+    effectiveFrom: '2026-01-01',
+    changedBy: 'PMU · A. Deshmukh',
+    note: 'Length is the single strongest factor. A long passphrase beats a short one with symbols in it.',
+  },
+  {
+    key: 'account.password.minClasses',
+    group: 'account',
+    label: 'Character classes required',
+    value: 3,
+    unit: 'of lower case, upper case, digit, symbol',
+    citation: 'PRAYOG-SOP-11',
+    effectiveFrom: '2026-01-01',
+    changedBy: 'PMU · A. Deshmukh',
+    note: 'Three of the four, not all four — requiring all four pushes people towards predictable substitutions.',
+  },
+  {
+    key: 'account.password.maxLength',
+    group: 'account',
+    label: 'Maximum password length',
+    value: 128,
+    unit: 'characters',
+    citation: 'PRAYOG-SOP-11',
+    effectiveFrom: '2026-01-01',
+    changedBy: 'PMU · A. Deshmukh',
+    note: 'A ceiling exists only to bound the request body. It is deliberately far above any real password.',
+  },
+  {
+    key: 'account.terms.version',
+    group: 'account',
+    label: 'Terms of participation in force',
+    value: 'v2.1 · 1 January 2026',
+    citation: 'PRAYOG-SOP-11',
+    effectiveFrom: '2026-01-01',
+    changedBy: 'Legal · S. Rao',
+    note: 'The version recorded against a consent. A consent without a version cannot be relied on later.',
+  },
+  {
+    key: 'account.officersSelfRegister',
+    group: 'account',
+    label: 'Government officers may self-register',
+    value: false,
+    citation: 'PRAYOG-SOP-11',
+    effectiveFrom: '2026-01-01',
+    changedBy: 'PMU · A. Deshmukh',
+    note: 'Departmental, procurement, validator and programme accounts are provisioned against a verified posting.',
+  },
 ] as const;
 
 const index = new Map(CONFIG_PARAMETERS.map((p) => [p.key, p]));

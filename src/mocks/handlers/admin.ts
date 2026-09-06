@@ -8,6 +8,7 @@ import { GATES } from '@/config/gates';
 import { STAGES } from '@/config/stages';
 import { getDb } from '../store/db';
 import { emptyIfScenario, fail, gate, notFound, ok, readBody, requirePermission } from './util';
+import { inReach, worksOn } from './jurisdiction';
 
 /**
  * Configuration is data. These handlers hold a mutable copy so the admin screens
@@ -310,7 +311,17 @@ export const adminHandlers = [
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
 
-    let items = db.audit.slice();
+    /*
+     * The audit trail is the case file, and a case file is a department's.
+     * Events on cases the reader does not work on are dropped before any of the
+     * query filters run, so a filter can never widen what is returned.
+     */
+    let items = db.audit.filter(
+      (a) =>
+        (a.entityType === 'challenge' && worksOn('challenges', a.entityId)) ||
+        (a.entityType === 'pilot' && worksOn('pilots', a.entityId)) ||
+        (a.entityType === 'application' && worksOn('applications', a.entityId)),
+    );
     if (entityId) items = items.filter((a) => a.entityId === entityId || a.caseId === entityId);
     if (entityType) items = items.filter((a) => a.entityType === entityType);
     if (actor) items = items.filter((a) => a.actorId === actor || a.actorName === actor);
@@ -370,7 +381,7 @@ export const adminHandlers = [
         return ok({
           kind,
           columns: ['Claim', 'Startup', 'Accepted on', 'Amount', 'Deduction', 'Net', 'Status', 'Days elapsed'],
-          rows: db.claims.map((c) => [
+          rows: inReach(db.claims, (c) => ({ departmentId: c.departmentId, startupId: c.startupId })).map((c) => [
             c.caseId,
             db.startups.find((s) => s.id === c.startupId)?.tradeName ?? '',
             c.acceptedOn,
@@ -385,7 +396,7 @@ export const adminHandlers = [
         return ok({
           kind,
           columns: ['Case', 'Pilot', 'Department', 'Status', 'Gate', 'Budget', 'Spent', 'Milestones accepted'],
-          rows: db.pilots.map((p) => [
+          rows: inReach(db.pilots, (p) => ({ departmentId: p.departmentId, startupId: p.startupId })).map((p) => [
             p.caseId,
             p.title,
             db.departments.find((d) => d.id === p.departmentId)?.shortName ?? '',
@@ -400,7 +411,7 @@ export const adminHandlers = [
         return ok({
           kind,
           columns: ['Case', 'Measure', 'Baseline', 'Target', 'Result', 'Outcome'],
-          rows: db.kpis.map((k) => {
+          rows: db.kpis.filter((k) => worksOn('pilots', k.pilotId)).map((k) => {
             const v = db.validations.find((x) => x.pilotId === k.pilotId);
             return [
               db.pilots.find((p) => p.id === k.pilotId)?.caseId ?? '',
@@ -416,7 +427,7 @@ export const adminHandlers = [
         return ok({
           kind: 'programme',
           columns: ['Case', 'Challenge', 'Department', 'Status', 'Gate', 'Budget', 'Applicants'],
-          rows: db.challenges.map((c) => [
+          rows: inReach(db.challenges, (c) => ({ departmentId: c.departmentId })).map((c) => [
             c.caseId,
             c.title,
             db.departments.find((d) => d.id === c.departmentId)?.shortName ?? '',

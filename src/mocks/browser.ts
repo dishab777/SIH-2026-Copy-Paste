@@ -67,6 +67,24 @@ function startFetchFallback(): void {
   };
 }
 
+/**
+ * Does the mock API actually answer?
+ *
+ * `worker.start()` resolving says the registration succeeded. It does not say
+ * the worker is controlling this page yet — after a hard reload, or while a
+ * previous worker is shutting down, there is a window where requests go
+ * straight past it to the dev server, which returns `index.html` for every
+ * unknown path. One probe settles it.
+ */
+async function intercepts(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/health', { headers: { Accept: 'application/json' } });
+    return (response.headers.get('content-type') ?? '').includes('json');
+  } catch {
+    return false;
+  }
+}
+
 export async function startMockApi(): Promise<void> {
   try {
     await worker.start({
@@ -77,7 +95,23 @@ export async function startMockApi(): Promise<void> {
   } catch (error) {
     console.warn('[prayog] Service worker unavailable; running the mock API through fetch instead.', error);
     startFetchFallback();
+    return;
   }
+
+  /*
+   * Started is not the same as intercepting. Give the worker a moment to take
+   * control, then check — and if it is not answering, use the fetch path
+   * rather than letting the first screen of the session fetch HTML and report
+   * an outage that is not happening.
+   */
+  if (await intercepts()) return;
+  await new Promise((resolve) => {
+    window.setTimeout(resolve, 120);
+  });
+  if (await intercepts()) return;
+
+  console.warn('[prayog] The service worker started but is not intercepting; running the mock API through fetch.');
+  startFetchFallback();
 }
 
 // Editing a handler replaces this module but not the running interceptor, which

@@ -7,6 +7,7 @@ import type { ReadinessComponent, ValidationReport } from '@/types/models';
 import { getDb } from '../store/db';
 import { currentUser } from '../store/session';
 import { fail, gate, notFound, ok, readBody, requirePermission } from './util';
+import { inReach } from './jurisdiction';
 
 export const validationHandlers = [
   http.get('/api/pilots/:id/validation', async ({ params }) => {
@@ -135,7 +136,10 @@ export const validationHandlers = [
     if (blocked) return blocked;
     const db = getDb();
     return ok(
-      db.procurement.map((p) => ({
+      inReach(db.procurement, (p) => {
+        const pilot = db.pilots.find((x) => x.id === p.pilotId);
+        return { departmentId: pilot?.departmentId, startupId: pilot?.startupId };
+      }).map((p) => ({
         procurement: p,
         pilot: db.pilots.find((x) => x.id === p.pilotId)!,
         validation: db.validations.find((v) => v.pilotId === p.pilotId) ?? null,

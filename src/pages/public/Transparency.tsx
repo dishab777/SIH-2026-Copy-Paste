@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTransparency } from '@/services/hooks';
 import { QueryState, WidgetBoundary } from '@/components/layout/QueryState';
 import { FreshnessLine, PageHeader } from '@/components/layout/Shell';
@@ -305,11 +306,12 @@ function FigureCard({
  * trust it. Giving them a titled card says so on the face of it.
  */
 function TableCard({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-sheet border border-rule bg-ledger shadow-sheet">
       <p className="field-label flex items-center gap-2 border-b border-rule px-4 py-3">
         <TableMark />
-        The numbers behind it
+        {t('pubTransparency.tableCard.title')}
       </p>
       <div className="overflow-x-auto scroll-quiet px-2 py-1">{children}</div>
     </div>

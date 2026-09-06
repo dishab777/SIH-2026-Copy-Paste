@@ -23,6 +23,7 @@ const GROUP_LABEL: Record<string, string> = {
   pilot: 'Pilots',
   data: 'Data and security',
   procurement: 'Procurement',
+  account: 'Accounts and sign-up',
 };
 
 export default function AdminConfig() {
@@ -61,6 +62,7 @@ export default function AdminConfig() {
           <>
             <LedgerTable
               caption="Configured parameters"
+              pageSize={12}
               exportName="prayog-configuration"
               rows={payload.data.parameters}
               rowKey={(p) => p.key}

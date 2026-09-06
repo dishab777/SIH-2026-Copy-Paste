@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useAuditPack, useChallenges, useReport } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
 import { PageHeader } from '@/components/layout/Shell';
@@ -7,6 +7,7 @@ import { TableSkeleton, PanelSkeleton, InlineNote } from '@/components/ui/Feedba
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Nav';
+import { SectionRail } from '@/components/patterns/SectionRail';
 import { Field, Select } from '@/components/ui/Field';
 import { AuditTrail } from '@/components/domain/RiskIncident';
 import { KeyValueSheet } from '@/components/ledger/Ledger';
@@ -34,10 +35,41 @@ function Cell({ column, value }: { column: string; value: string | number }) {
   return <span className={typeof value === 'number' ? 'tnum' : ''}>{value}</span>;
 }
 
+/**
+ * One part of the pack. Empty is a finding in an audit pack — "no eligibility
+ * override was recorded" is a sentence somebody may need years later — so a
+ * part with nothing in it says so rather than vanishing from the rail.
+ */
+function Part({
+  title,
+  empty,
+  emptyNote,
+  children,
+}: {
+  title: string;
+  empty: boolean;
+  emptyNote: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="mb-3 text-h3 text-ink">{title}</h3>
+      {empty ? (
+        <p className="sheet-flat px-4 py-3 text-body text-ink-soft">{emptyNote}</p>
+      ) : (
+        children
+      )}
+    </section>
+  );
+}
+
 export default function Reports() {
   const [tab, setTab] = useState('standard');
   const [kind, setKind] = useState('programme');
   const [caseId, setCaseId] = useState('CH-2026-0143');
+  /* Which part of the pack is open. The whole pack is what you export; one
+     part is what you read. */
+  const [part, setPart] = useState('case');
 
   const report = useReport(kind);
   const pack = useAuditPack(tab === 'audit' ? caseId : undefined);
@@ -80,6 +112,7 @@ export default function Reports() {
             >
               {(payload) => (
                 <LedgerTable
+                  title={REPORTS.find((r) => r.value === kind)?.label ?? kind}
                   caption={REPORTS.find((r) => r.value === kind)?.label ?? kind}
                   exportName={`prayog-${kind}-report`}
                   rows={payload.data.rows.map((row, i) => ({ id: String(i), cells: row }))}
@@ -176,126 +209,229 @@ export default function Reports() {
                       </Button>
                     </div>
 
-                    <KeyValueSheet
-                      title="Case"
-                      items={[
-                        { label: 'Challenge', value: p.challenge ? `${p.challenge.caseId} — ${p.challenge.title}` : '—' },
-                        { label: 'Pilot', value: p.pilot ? `${p.pilot.caseId} — ${p.pilot.status.replace(/_/g, ' ')}` : 'No pilot' },
-                        { label: 'Gate records', value: String(p.gates.length) },
-                        { label: 'Evaluations', value: String(p.evaluations.length) },
-                        { label: 'Eligibility overrides', value: String(p.overrides.length) },
-                        { label: 'Milestones', value: String(p.milestones.length) },
-                        { label: 'Payment records', value: String(p.claims.length) },
-                        { label: 'Evidence files', value: String(p.evidence.length) },
-                        {
-                          label: 'Validation',
-                          value: p.validation
-                            ? `${p.validation.outcome?.replace(/_/g, ' ') ?? 'in progress'}${p.validation.hash ? ` · checksum ${shortHash(p.validation.hash)}` : ''}`
-                            : 'None',
-                        },
+                    <SectionRail
+                      title="The pack, in parts"
+                      note="Every part is in the export. This is which one is on the screen."
+                      label="Audit pack sections"
+                      value={part}
+                      onChange={setPart}
+                      sections={[
+                        { id: 'case', label: 'The case' },
+                        { id: 'gates', label: 'Gate decisions', count: p.gates.length },
+                        { id: 'evaluations', label: 'Evaluator scores', count: p.evaluations.length },
+                        { id: 'overrides', label: 'Eligibility overrides', count: p.overrides.length },
+                        { id: 'milestones', label: 'Milestones', count: p.milestones.length },
+                        { id: 'payments', label: 'Payment records', count: p.claims.length },
+                        { id: 'documents', label: 'Documents and checksums', count: p.evidence.length },
+                        { id: 'timeline', label: 'Timeline, in order', count: p.timeline.length },
                       ]}
-                    />
+                    >
+                      {part === 'case' ? (
+                        <KeyValueSheet
+                          title="Case"
+                          items={[
+                            { label: 'Challenge', value: p.challenge ? `${p.challenge.caseId} — ${p.challenge.title}` : '—' },
+                            {
+                              label: 'Pilot',
+                              value: p.pilot ? `${p.pilot.caseId} — ${p.pilot.status.replace(/_/g, ' ')}` : 'No pilot',
+                            },
+                            { label: 'Gate records', value: String(p.gates.length) },
+                            { label: 'Evaluations', value: String(p.evaluations.length) },
+                            { label: 'Eligibility overrides', value: String(p.overrides.length) },
+                            { label: 'Milestones', value: String(p.milestones.length) },
+                            { label: 'Payment records', value: String(p.claims.length) },
+                            { label: 'Evidence files', value: String(p.evidence.length) },
+                            {
+                              label: 'Validation',
+                              value: p.validation
+                                ? `${p.validation.outcome?.replace(/_/g, ' ') ?? 'in progress'}${p.validation.hash ? ` · checksum ${shortHash(p.validation.hash)}` : ''}`
+                                : 'None',
+                            },
+                          ]}
+                        />
+                      ) : null}
 
-                    <section>
-                      <h3 className="mb-3 text-h3 text-ink">Gate decisions</h3>
-                      <ul className="sheet-flat">
-                        {p.gates.map((g) => (
-                          <li key={g.id} className="ledger-row px-4 py-3">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div className="min-w-0 max-w-doc">
-                                <p className="text-data text-ink">{g.gate}</p>
-                                {g.reason ? (
-                                  <p className="mt-1 max-w-doc font-doc text-doc text-ink">{g.reason}</p>
-                                ) : (
-                                  <p className="mt-1 text-body text-ink-soft">No decision recorded.</p>
-                                )}
-                                <p className="mt-1 text-micro text-ink-soft">
-                                  {g.preconditions.filter((x) => x.result === 'pass').length} of{' '}
-                                  {countOf(g.preconditions.length, 'precondition')} met · dwell {g.dwellDays} days
-                                </p>
-                                {g.waiver ? (
-                                  <p className="mt-1 text-micro text-ink">
-                                    Waiver {g.waiver.status} — {g.waiver.reason}
-                                  </p>
-                                ) : null}
-                              </div>
-                              <div className="flex shrink-0 flex-col items-end gap-1">
-                                <StatusBadge status={g.status} />
-                                <span className="text-micro text-ink-soft tnum">
-                                  {g.decidedOn ? day(g.decidedOn) : '—'}
+                      {part === 'gates' ? (
+                        <Part title="Gate decisions" empty={p.gates.length === 0} emptyNote="No gate has been decided on this case yet.">
+                          <ul className="sheet-flat">
+                            {p.gates.map((g) => (
+                              <li key={g.id} className="ledger-row px-4 py-3">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="min-w-0 max-w-doc">
+                                    <p className="text-data text-ink">{g.gate}</p>
+                                    {g.reason ? (
+                                      <p className="mt-1 max-w-doc font-doc text-doc text-ink">{g.reason}</p>
+                                    ) : (
+                                      <p className="mt-1 text-body text-ink-soft">No decision recorded.</p>
+                                    )}
+                                    <p className="mt-1 text-micro text-ink-soft">
+                                      {g.preconditions.filter((x) => x.result === 'pass').length} of{' '}
+                                      {countOf(g.preconditions.length, 'precondition')} met · dwell {g.dwellDays} days
+                                    </p>
+                                    {g.waiver ? (
+                                      <p className="mt-1 text-micro text-ink">
+                                        Waiver {g.waiver.status} — {g.waiver.reason}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex shrink-0 flex-col items-end gap-1">
+                                    <StatusBadge status={g.status} />
+                                    <span className="text-micro text-ink-soft tnum">
+                                      {g.decidedOn ? day(g.decidedOn) : '—'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </Part>
+                      ) : null}
+
+                      {part === 'evaluations' ? (
+                        <Part
+                          title="Evaluator scores"
+                          empty={p.evaluations.length === 0}
+                          emptyNote="No panel has scored this case."
+                        >
+                          <ul className="sheet-flat">
+                            {p.evaluations.map((e) => (
+                              <li
+                                key={e.id}
+                                className="ledger-row flex flex-wrap items-baseline justify-between gap-3 px-4 py-2"
+                              >
+                                <span className="min-w-0">
+                                  <span className="block text-body text-ink">{e.evaluatorName}</span>
+                                  <span className="block text-micro text-ink-soft">
+                                    {countOf(e.scores.length, 'criterion scored', 'criteria scored')}
+                                    {e.submittedAt ? ` · submitted ${day(e.submittedAt)}` : ''}
+                                  </span>
                                 </span>
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
+                                <span className="flex items-center gap-3">
+                                  <StatusBadge status={e.status} />
+                                  <span className="text-data text-ink tnum">
+                                    {typeof e.weightedTotal === 'number' ? `${e.weightedTotal.toFixed(2)} of 5` : '—'}
+                                  </span>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </Part>
+                      ) : null}
 
-                    {p.overrides.length > 0 ? (
-                      <section>
-                        <h3 className="mb-3 text-h3 text-ink">Eligibility overrides</h3>
-                        <ul className="sheet-flat">
-                          {p.overrides.map((o, i) => (
-                            <li key={`${o.applicationCaseId}-${o.ruleId}-${i}`} className="ledger-row px-4 py-3">
-                              <p className="text-body text-ink">
-                                {o.applicationCaseId} · rule {o.ruleId}
-                              </p>
-                              <p className="mt-1 max-w-doc font-doc text-doc text-ink">
-                                {o.override?.justification}
-                              </p>
-                              <p className="mt-1 text-micro text-ink-soft">
-                                {o.override?.by} · {dayTime(o.override?.at)}
-                              </p>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
+                      {part === 'overrides' ? (
+                        <Part
+                          title="Eligibility overrides"
+                          empty={p.overrides.length === 0}
+                          emptyNote="Every application on this case cleared the rules as written. Nothing was overridden."
+                        >
+                          <ul className="sheet-flat">
+                            {p.overrides.map((o, i) => (
+                              <li key={`${o.applicationCaseId}-${o.ruleId}-${i}`} className="ledger-row px-4 py-3">
+                                <p className="text-body text-ink">
+                                  {o.applicationCaseId} · rule {o.ruleId}
+                                </p>
+                                <p className="mt-1 max-w-doc font-doc text-doc text-ink">{o.override?.justification}</p>
+                                <p className="mt-1 text-micro text-ink-soft">
+                                  {o.override?.by} · {dayTime(o.override?.at)}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        </Part>
+                      ) : null}
 
-                    {p.claims.length > 0 ? (
-                      <section>
-                        <h3 className="mb-3 text-h3 text-ink">Payment records</h3>
-                        <ul className="sheet-flat">
-                          {p.claims.map((c) => (
-                            <li key={c.id} className="ledger-row flex flex-wrap items-baseline justify-between gap-3 px-4 py-2">
-                              <span className="text-body text-ink">
-                                {c.caseId} · accepted {day(c.acceptedOn)}
-                                {c.paidOn ? ` · paid ${day(c.paidOn)}` : ''}
-                              </span>
-                              <span className="flex items-center gap-3">
-                                {c.paymentReference ? (
-                                  <span className="type-register text-micro text-ink-soft">{c.paymentReference}</span>
-                                ) : null}
-                                <StatusBadge status={c.status} />
-                                <span className="text-data text-ink tnum">{money(c.netPaise)}</span>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
+                      {part === 'milestones' ? (
+                        <Part
+                          title="Milestones"
+                          empty={p.milestones.length === 0}
+                          emptyNote="No pilot has been contracted on this case."
+                        >
+                          <ul className="sheet-flat">
+                            {p.milestones.map((m) => (
+                              <li key={m.id} className="ledger-row px-4 py-3">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="min-w-0 max-w-doc">
+                                    <p className="text-body text-ink">
+                                      Milestone {m.index} — {m.name}
+                                    </p>
+                                    <p className="type-register text-micro text-ink-soft">{m.caseId}</p>
+                                    <p className="mt-1 text-micro text-ink-soft">Acceptance test: {m.acceptanceTest}</p>
+                                    {m.acceptanceFinding ? (
+                                      <p className="mt-0.5 text-micro text-ink">
+                                        Finding: {m.acceptanceFinding.replace(/_/g, ' ')}
+                                        {m.acceptedOn ? ` · accepted ${day(m.acceptedOn)}` : ''}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex shrink-0 flex-col items-end gap-1">
+                                    <StatusBadge status={m.status} />
+                                    <span className="text-data text-ink tnum">{money(m.paymentPaise)}</span>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </Part>
+                      ) : null}
 
-                    {p.evidence.length > 0 ? (
-                      <section>
-                        <h3 className="mb-3 text-h3 text-ink">Documents and checksums</h3>
-                        <ul className="sheet-flat">
-                          {p.evidence.map((e) => (
-                            <li key={e.id} className="ledger-row flex flex-wrap items-baseline justify-between gap-3 px-4 py-2">
-                              <span className="min-w-0 truncate text-body text-ink">{e.fileName}</span>
-                              <span className="flex items-center gap-3">
-                                <Badge tone="neutral">{e.access}</Badge>
-                                <span className="text-micro text-ink-soft tnum">{shortHash(e.hash)}</span>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
+                      {part === 'payments' ? (
+                        <Part
+                          title="Payment records"
+                          empty={p.claims.length === 0}
+                          emptyNote="No milestone on this case has been accepted, so nothing is payable yet."
+                        >
+                          <ul className="sheet-flat">
+                            {p.claims.map((c) => (
+                              <li
+                                key={c.id}
+                                className="ledger-row flex flex-wrap items-baseline justify-between gap-3 px-4 py-2"
+                              >
+                                <span className="text-body text-ink">
+                                  {c.caseId} · accepted {day(c.acceptedOn)}
+                                  {c.paidOn ? ` · paid ${day(c.paidOn)}` : ''}
+                                </span>
+                                <span className="flex items-center gap-3">
+                                  {c.paymentReference ? (
+                                    <span className="type-register text-micro text-ink-soft">{c.paymentReference}</span>
+                                  ) : null}
+                                  <StatusBadge status={c.status} />
+                                  <span className="text-data text-ink tnum">{money(c.netPaise)}</span>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </Part>
+                      ) : null}
 
-                    <section>
-                      <h3 className="mb-3 text-h3 text-ink">Timeline, in order</h3>
-                      <AuditTrail items={p.timeline} dense />
-                    </section>
+                      {part === 'documents' ? (
+                        <Part
+                          title="Documents and checksums"
+                          empty={p.evidence.length === 0}
+                          emptyNote="No evidence has been filed against this case."
+                        >
+                          <ul className="sheet-flat">
+                            {p.evidence.map((e) => (
+                              <li
+                                key={e.id}
+                                className="ledger-row flex flex-wrap items-baseline justify-between gap-3 px-4 py-2"
+                              >
+                                <span className="min-w-0 truncate text-body text-ink">{e.fileName}</span>
+                                <span className="flex items-center gap-3">
+                                  <Badge tone="neutral">{e.access}</Badge>
+                                  <span className="text-micro text-ink-soft tnum">{shortHash(e.hash)}</span>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </Part>
+                      ) : null}
+
+                      {part === 'timeline' ? (
+                        <Part title="Timeline, in order" empty={p.timeline.length === 0} emptyNote="Nothing has been recorded against this case.">
+                          <AuditTrail items={p.timeline} dense />
+                        </Part>
+                      ) : null}
+                    </SectionRail>
                   </div>
                 );
               }}

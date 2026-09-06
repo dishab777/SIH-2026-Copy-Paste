@@ -31,6 +31,17 @@ export interface WizardShellProps {
   /** Shown above the step when a save has failed, so nothing is lost silently. */
   saveError?: string;
   onRetrySave?: () => void;
+  /**
+   * A richer progress rail to stand in the left column instead of the plain
+   * numbered list.
+   *
+   * The challenge studio drew both: this shell's list down the side AND its own
+   * capsule rail across the top of the form, saying the same eight things
+   * twice. One of them had to go, and the capsules are the better drawing —
+   * they carry the state of each step, not only its name. Pass them here and
+   * the list steps aside.
+   */
+  rail?: ReactNode;
 }
 
 export function WizardShell({
@@ -47,6 +58,7 @@ export function WizardShell({
   footer,
   saveError,
   onRetrySave,
+  rail,
 }: WizardShellProps) {
   const [confirmExit, setConfirmExit] = useState(false);
   const current = steps.find((s) => s.slug === currentSlug) ?? steps[0]!;
@@ -62,14 +74,22 @@ export function WizardShell({
   const next = steps[current.index];
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]">
+    <div
+      className={[
+        'grid grid-cols-1 gap-6',
+        rail ? 'lg:grid-cols-[320px_minmax(0,1fr)]' : 'lg:grid-cols-[240px_minmax(0,1fr)]',
+      ].join(' ')}
+    >
       <nav aria-label="Steps" className="lg:sticky lg:top-4 lg:self-start">
-        <div className="sheet-flat">
-          <div className="border-b border-ink px-4 py-2">
-            <h2 className="text-label text-ink">{title}</h2>
-            {caseId ? <p className="mt-0.5 text-micro text-ink-soft tnum">{caseId}</p> : null}
-          </div>
-          <ol>
+        <div className={rail ? '' : 'sheet-flat'}>
+          {rail ? null : (
+            <div className="border-b border-ink px-4 py-2">
+              <h2 className="text-label text-ink">{title}</h2>
+              {caseId ? <p className="mt-0.5 text-micro text-ink-soft tnum">{caseId}</p> : null}
+            </div>
+          )}
+          {rail}
+          <ol className={rail ? 'hidden' : ''}>
             {steps.map((s) => {
               const isCurrent = s.slug === currentSlug;
               const complete = s.missing.length === 0;
@@ -112,7 +132,9 @@ export function WizardShell({
               );
             })}
           </ol>
-          <div className="border-t border-rule px-4 py-3">
+          {/* The save state stays whichever rail is drawn: it is the one thing
+              in this column that is not a step. */}
+          <div className={rail ? 'sheet-flat mt-4 px-4 py-3' : 'border-t border-rule px-4 py-3'}>
             <Button size="sm" block onClick={onSaveDraft} loading={saveState === 'saving'} loadingLabel="Saving">
               Save draft
             </Button>

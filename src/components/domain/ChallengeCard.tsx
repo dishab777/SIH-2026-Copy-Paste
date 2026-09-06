@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { SlaClock } from '@/components/domain/SlaClock';
 import { day, daysBetween, money, num } from '@/lib/format';
 import type { Challenge } from '@/types/models';
 import { usePortalLink } from '@/lib/portal';
+import { useTaxonomyLabel } from '@/config/taxonomy';
 
 /**
  * One open problem, as a card you can compare against the one beside it.
@@ -27,6 +29,9 @@ export function ChallengeCard({
   /** Where the card sits in the page outline. 2 when the grid follows the h1 directly. */
   headingLevel?: 2 | 3;
 }) {
+  const { t } = useTranslation();
+  // Sector, district and capability are reference values, not free text.
+  const label = useTaxonomyLabel();
   const link = usePortalLink();
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const open = isOpen(c.status);
@@ -43,14 +48,14 @@ export function ChallengeCard({
           and the eye finds the same place on every card in the grid. */}
       <div className="border-b border-rule bg-verify-wash px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="field-label !text-verify">{c.sector}</span>
+          <span className="field-label !text-verify">{label(c.sector)}</span>
           <span className="type-register text-micro text-ink-soft">{c.caseId}</span>
         </div>
 
         <Heading className="swift mt-2 font-display text-h3 text-ink group-hover:text-verify">{c.title}</Heading>
 
         <p className="mt-1 text-body text-ink-soft">
-          {c.district}, {c.state}
+          {label(c.district)}, {label(c.state)}
         </p>
       </div>
 
@@ -61,8 +66,12 @@ export function ChallengeCard({
 
         {detailed ? (
           <p className="mt-3 text-micro text-ink-soft tnum">
-            Baseline {num(c.baseline.currentValue, 1)} {c.baseline.unit} &rarr; target {num(c.outcome.magnitude, 1)}{' '}
-            {c.outcome.unit}
+            {t('card.baselineToTarget', {
+              baseline: num(c.baseline.currentValue, 1),
+              baselineUnit: c.baseline.unit,
+              target: num(c.outcome.magnitude, 1),
+              targetUnit: c.outcome.unit,
+            })}
           </p>
         ) : null}
 
@@ -70,7 +79,7 @@ export function ChallengeCard({
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {c.capabilities.slice(0, 3).map((cap) => (
               <li key={cap} className="rounded-pill border border-rule bg-ledger px-2 py-0.5 text-micro text-ink-soft">
-                {cap}
+                {label(cap)}
               </li>
             ))}
           </ul>
@@ -78,12 +87,12 @@ export function ChallengeCard({
 
         <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-6">
           <div>
-            <p className="field-label">Pilot budget</p>
+            <p className="field-label">{t('card.pilotBudget')}</p>
             <p className="font-display text-figure text-verify tnum">{money(c.pilot.budgetPaise)}</p>
-            <p className="mt-1 text-micro text-ink-soft">over {c.pilot.durationDays} days</p>
+            <p className="mt-1 text-micro text-ink-soft">{t('card.overDays', { count: c.pilot.durationDays })}</p>
           </div>
           <div className="text-right">
-            <p className="field-label">{open ? 'Closes' : 'Closed'}</p>
+            <p className="field-label">{open ? t('card.closes') : t('card.closed')}</p>
             {c.timeline.closesOn && c.timeline.publishedOn ? (
               open ? (
                 <SlaClock
@@ -97,14 +106,14 @@ export function ChallengeCard({
               <p className="text-data text-ink">&mdash;</p>
             )}
             <p className="mt-1 text-micro text-ink-soft tnum">
-              {c.applicantCount} {c.applicantCount === 1 ? 'applicant' : 'applicants'}
+              {t('card.applicants', { count: c.applicantCount })}
             </p>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-rule pt-3">
           <StatusBadge status={c.status} />
-          {c.eligibility.relaxationsAvailable ? <Badge tone="verify">Startup relief</Badge> : null}
+          {c.eligibility.relaxationsAvailable ? <Badge tone="verify">{t('card.startupRelief')}</Badge> : null}
         </div>
       </div>
     </Link>

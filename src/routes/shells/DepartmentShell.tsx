@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Shell } from '@/components/layout/Shell';
 
 /**
@@ -16,14 +17,20 @@ import { Shell } from '@/components/layout/Shell';
  * permission.
  */
 const LINKS = [
-  { to: '/d', label: "Who's waiting", end: true },
-  { to: '/d/challenges', label: 'Challenges' },
-  { to: '/d/pilots', label: 'Pilots' },
-  { to: '/d/payments', label: 'Payments' },
-  { to: '/d/reports', label: 'Reports' },
-  { to: '/d/catalogue', label: 'Validated catalogue' },
+  { to: '/d', labelKey: 'bar.whosWaiting', end: true },
+  { to: '/d/challenges', labelKey: 'bar.challenges' },
+  { to: '/d/pilots', labelKey: 'bar.pilots' },
+  { to: '/d/payments', labelKey: 'bar.payments' },
+  { to: '/d/reports', labelKey: 'bar.reports' },
+  { to: '/d/catalogue', labelKey: 'bar.validatedCatalogue' },
 ];
 
 export function DepartmentShell() {
-  return <Shell allow={['department_officer', 'department_admin', 'procurement_officer']} links={LINKS} />;
+  const { t } = useTranslation();
+  return (
+    <Shell
+      allow={['department_officer', 'department_admin', 'procurement_officer']}
+      links={LINKS.map((l) => ({ to: l.to, end: l.end, label: t(l.labelKey) }))}
+    />
+  );
 }

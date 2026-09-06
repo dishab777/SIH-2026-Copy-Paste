@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { StatusTone } from '@/components/ui/Badge';
 
@@ -183,11 +184,12 @@ export function ComparisonMatrix({
   /** What the table compares. Read before the data by anyone using a screen reader. */
   caption?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="overflow-auto scroll-quiet">
       <table className="w-full border-collapse text-data">
         <caption className="sr-only">
-          {caption ?? `${rowHeader} compared across ${columns.map((c) => c.label).join(', ')}`}
+          {caption ?? t('taxonomy.matrix.caption', { rowHeader, columns: columns.map((c) => c.label).join(', ') })}
         </caption>
         <thead>
           <tr className="rule-close">
