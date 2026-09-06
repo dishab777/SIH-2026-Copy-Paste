@@ -6,6 +6,7 @@ import { getDb } from '../store/db';
 import { currentUser } from '../store/session';
 import { evaluatePreconditions } from './challenges';
 import { asScenarioGate, fail, gate as scenarioGate, notFound, ok, readBody, requirePermission } from './util';
+import { worksOn } from './jurisdiction';
 
 export const gateHandlers = [
   http.get('/api/gates/:id', async ({ params }) => {
@@ -47,6 +48,8 @@ export const gateHandlers = [
         caseId: record.caseId,
         title: 'title' in entity ? entity.title : record.caseId,
         departmentId: entity.departmentId,
+        /* The cover of a file names the office, not its primary key. */
+        departmentName: db.departments.find((d) => d.id === entity.departmentId)?.shortName ?? entity.departmentId,
         budgetPaise: 'pilot' in entity ? entity.pilot.budgetPaise : entity.budgetPaise,
       },
       ladder: db.gates
@@ -206,7 +209,14 @@ export const gateHandlers = [
     const db = getDb();
     const url = new URL(request.url);
     const entityId = url.searchParams.get('entityId');
-    const items = (entityId ? db.gates.filter((g) => g.entityId === entityId) : db.gates).map(asScenarioGate);
-    return ok(items);
+    /*
+     * A gate record names a case, an owner and a decision, so the ladder is
+     * scoped to the cases the reader actually works on. Publishing a challenge
+     * publishes the challenge, not the department's decisions about it.
+     */
+    const visible = (entityId ? db.gates.filter((g) => g.entityId === entityId) : db.gates).filter((g) =>
+      worksOn(g.entityType === 'challenge' ? 'challenges' : 'pilots', g.entityId),
+    );
+    return ok(visible.map(asScenarioGate));
   }),
 ];

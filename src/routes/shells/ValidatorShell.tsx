@@ -1,11 +1,15 @@
+import { useTranslation } from 'react-i18next';
 import { Shell } from '@/components/layout/Shell';
 
 const LINKS = [
-  { to: '/v', label: 'Validation queue', end: true },
-  { to: '/v/results', label: 'Published results' },
-  { to: '/v/transparency', label: 'Programme transparency' },
+  { to: '/v', labelKey: 'bar.validationQueue', end: true },
+  { to: '/v/results', labelKey: 'bar.publishedResults' },
+  { to: '/v/transparency', labelKey: 'bar.programmeTransparency' },
 ];
 
 export function ValidatorShell() {
-  return <Shell allow={['validator']} links={LINKS} />;
+  const { t } = useTranslation();
+  return (
+    <Shell allow={['validator']} links={LINKS.map((l) => ({ to: l.to, end: l.end, label: t(l.labelKey) }))} />
+  );
 }

@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useChallenges } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
@@ -9,15 +10,18 @@ import { Pagination } from '@/components/ui/Nav';
 import { Field, Input, Select, MultiSelectTags, NumberInput, Checkbox } from '@/components/ui/Field';
 import { ChallengeCard } from '@/components/domain/ChallengeCard';
 import { SECTORS, STATES, CAPABILITIES } from '@/mocks/fixtures/reference';
+import { useTaxonomyLabel } from '@/config/taxonomy';
 import { moneyScaled, num } from '@/lib/format';
 import { usePortalLink } from '@/lib/portal';
 import type { Challenge } from '@/types/models';
 
+/* The label is a key, not a sentence: this list is read at module scope, where
+   `t` does not exist, so the translation happens at the render site. */
 const SORTS = [
-  { value: 'closing', label: 'Closing soonest' },
-  { value: 'budget', label: 'Largest pilot budget' },
-  { value: 'newest', label: 'Most recently published' },
-  { value: 'fewest', label: 'Fewest applicants' },
+  { value: 'closing', labelKey: 'pubChallenges.sort.closing' },
+  { value: 'budget', labelKey: 'pubChallenges.sort.budget' },
+  { value: 'newest', labelKey: 'pubChallenges.sort.newest' },
+  { value: 'fewest', labelKey: 'pubChallenges.sort.fewest' },
 ];
 
 /*
@@ -175,6 +179,9 @@ function summarise(rows: Challenge[]): Summary {
 }
 
 export default function ChallengeList() {
+  const { t } = useTranslation();
+  // Sector, state and capability are reference values, not free text.
+  const term = useTaxonomyLabel();
   // Filter state lives in the URL so a filtered view can be shared and returned to.
   const [params, setParams] = useSearchParams();
   // This page is mounted under every portal. A bare /results would swap the shell.
@@ -247,21 +254,21 @@ export default function ChallengeList() {
   }
 
   const activeFilters = [
-    ...filters.sector.map((s) => ({ key: 'sector', value: s, label: `Sector: ${s}` })),
-    ...filters.state.map((s) => ({ key: 'state', value: s, label: `State: ${s}` })),
-    ...filters.capability.map((s) => ({ key: 'capability', value: s, label: `Capability: ${s}` })),
-    ...(filters.minBudget ? [{ key: 'minBudget', value: filters.minBudget, label: `Budget at least ₹${filters.minBudget}` }] : []),
-    ...(filters.maxBudget ? [{ key: 'maxBudget', value: filters.maxBudget, label: `Budget at most ₹${filters.maxBudget}` }] : []),
-    ...(filters.closingWithin ? [{ key: 'closingWithin', value: filters.closingWithin, label: `Closing within ${filters.closingWithin} days` }] : []),
-    ...(filters.relaxation ? [{ key: 'relaxation', value: 'true', label: 'Startup relief available' }] : []),
-    ...(filters.q ? [{ key: 'q', value: filters.q, label: `Text: ${filters.q}` }] : []),
+    ...filters.sector.map((s) => ({ key: 'sector', value: s, label: t('pubChallenges.chip.sector', { value: term(s) }) })),
+    ...filters.state.map((s) => ({ key: 'state', value: s, label: t('pubChallenges.chip.state', { value: term(s) }) })),
+    ...filters.capability.map((s) => ({ key: 'capability', value: s, label: t('pubChallenges.chip.capability', { value: term(s) }) })),
+    ...(filters.minBudget ? [{ key: 'minBudget', value: filters.minBudget, label: t('pubChallenges.chip.budgetMin', { value: filters.minBudget }) }] : []),
+    ...(filters.maxBudget ? [{ key: 'maxBudget', value: filters.maxBudget, label: t('pubChallenges.chip.budgetMax', { value: filters.maxBudget }) }] : []),
+    ...(filters.closingWithin ? [{ key: 'closingWithin', value: filters.closingWithin, label: t('pubChallenges.chip.closingWithin', { count: Number(filters.closingWithin) }) }] : []),
+    ...(filters.relaxation ? [{ key: 'relaxation', value: 'true', label: t('pubChallenges.chip.relief') }] : []),
+    ...(filters.q ? [{ key: 'q', value: filters.q, label: t('pubChallenges.chip.text', { value: filters.q }) }] : []),
   ];
 
   const cards: { key: string; icon: GlyphName; label: string; value: string; tile: string; figure: string }[] = [
     {
       key: 'budget',
       icon: 'rupee',
-      label: 'Pilot budget on offer',
+      label: t('pubChallenges.summary.budget'),
       value: moneyScaled(summary.budgetPaise),
       tile: 'bg-verify text-white',
       figure: 'text-verify',
@@ -269,7 +276,7 @@ export default function ChallengeList() {
     {
       key: 'open',
       icon: 'inbox',
-      label: 'Accepting applications',
+      label: t('pubChallenges.summary.open'),
       value: num(summary.open),
       tile: 'bg-saffron text-deep',
       figure: 'text-saffron-ink',
@@ -277,7 +284,7 @@ export default function ChallengeList() {
     {
       key: 'relief',
       icon: 'shield',
-      label: 'With startup relief',
+      label: t('pubChallenges.summary.relief'),
       value: num(summary.relief),
       tile: 'bg-verify-wash text-verify',
       figure: 'text-verify',
@@ -287,13 +294,13 @@ export default function ChallengeList() {
   return (
     <div>
       <PageHeader
-        eyebrow="Public register"
-        title="Open challenges"
-        lead="Every published challenge, with its budget, its deadline and the rubric it will be scored against."
+        eyebrow={t('pubChallenges.list.eyebrow')}
+        title={t('pubChallenges.list.title')}
+        lead={t('pubChallenges.list.lead')}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[288px_1fr]">
-        <aside aria-label="Filters">
+        <aside aria-label={t('pubChallenges.filters.title')}>
           {/*
             The filter list floats over the results while they scroll past it, so
             it is the one panel on this screen that earns a real backdrop blur.
@@ -304,7 +311,7 @@ export default function ChallengeList() {
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-control bg-verify text-white shadow-sheet">
                   <Glyph name="funnel" />
                 </span>
-                Filters
+                {t('pubChallenges.filters.title')}
               </p>
               {activeFilters.length > 0 ? (
                 <span className="rounded-pill border border-verify bg-verify-wash px-2.5 py-0.5 text-micro text-verify tnum">
@@ -315,55 +322,58 @@ export default function ChallengeList() {
 
             <div className="flex flex-col gap-5">
               <FilterGroup icon="search" tint="text-ink-soft" active={filters.q !== ''}>
-                <Field label="Search the text">
+                <Field label={t('pubChallenges.filters.search')}>
                   {({ id }) => (
                     <Input
                       id={id}
                       value={filters.q}
                       onChange={(e) => set('q', e.target.value)}
-                      placeholder="water, fuel, dropout"
+                      placeholder={t('pubChallenges.filters.searchPlaceholder')}
                     />
                   )}
                 </Field>
               </FilterGroup>
 
               <FilterGroup icon="tag" active={filters.sector.length > 0}>
-                <Field label="Sector">
+                <Field label={t('pubChallenges.filters.sector')}>
                   {({ id }) => (
                     <MultiSelectTags
                       id={id}
                       values={filters.sector}
                       onChange={(v) => set('sector', v)}
                       options={[...SECTORS]}
-                      placeholder="Add a sector"
+                      label={term}
+                      placeholder={t('pubChallenges.filters.sectorPlaceholder')}
                     />
                   )}
                 </Field>
               </FilterGroup>
 
               <FilterGroup icon="pin" active={filters.state.length > 0}>
-                <Field label="State">
+                <Field label={t('pubChallenges.filters.state')}>
                   {({ id }) => (
                     <MultiSelectTags
                       id={id}
                       values={filters.state}
                       onChange={(v) => set('state', v)}
                       options={[...STATES]}
-                      placeholder="Add a state"
+                      label={term}
+                      placeholder={t('pubChallenges.filters.statePlaceholder')}
                     />
                   )}
                 </Field>
               </FilterGroup>
 
               <FilterGroup icon="nodes" active={filters.capability.length > 0}>
-                <Field label="Capability">
+                <Field label={t('pubChallenges.filters.capability')}>
                   {({ id }) => (
                     <MultiSelectTags
                       id={id}
                       values={filters.capability}
                       onChange={(v) => set('capability', v)}
                       options={[...CAPABILITIES]}
-                      placeholder="Add a capability"
+                      label={term}
+                      placeholder={t('pubChallenges.filters.capabilityPlaceholder')}
                     />
                   )}
                 </Field>
@@ -371,12 +381,12 @@ export default function ChallengeList() {
 
               <FilterGroup icon="rupee" active={filters.minBudget !== '' || filters.maxBudget !== ''}>
                 <div className="flex flex-col gap-4">
-                  <Field label="Budget from (₹)">
+                  <Field label={t('pubChallenges.filters.budgetFrom')}>
                     {({ id }) => (
                       <NumberInput id={id} value={filters.minBudget} onChange={(e) => set('minBudget', e.target.value)} />
                     )}
                   </Field>
-                  <Field label="Budget to (₹)">
+                  <Field label={t('pubChallenges.filters.budgetTo')}>
                     {({ id }) => (
                       <NumberInput id={id} value={filters.maxBudget} onChange={(e) => set('maxBudget', e.target.value)} />
                     )}
@@ -385,17 +395,17 @@ export default function ChallengeList() {
               </FilterGroup>
 
               <FilterGroup icon="clock" tint="text-hold" active={filters.closingWithin !== ''}>
-                <Field label="Closing window">
+                <Field label={t('pubChallenges.filters.closingWindow')}>
                   {({ id }) => (
                     <Select
                       id={id}
-                      placeholder="Any time"
+                      placeholder={t('pubChallenges.filters.closingAny')}
                       value={filters.closingWithin}
                       onChange={(e) => set('closingWithin', e.target.value)}
                       options={[
-                        { value: '7', label: 'Within 7 days' },
-                        { value: '14', label: 'Within 14 days' },
-                        { value: '30', label: 'Within 30 days' },
+                        { value: '7', label: t('pubChallenges.filters.closingOption', { count: 7 }) },
+                        { value: '14', label: t('pubChallenges.filters.closingOption', { count: 14 }) },
+                        { value: '30', label: t('pubChallenges.filters.closingOption', { count: 30 }) },
                       ]}
                     />
                   )}
@@ -406,8 +416,8 @@ export default function ChallengeList() {
                 <Checkbox
                   checked={filters.relaxation === 'true'}
                   onChange={(on) => set('relaxation', on ? 'true' : '')}
-                  label="Startup relief available"
-                  detail="Prior turnover and prior experience relaxed for a recognised startup."
+                  label={t('pubChallenges.filters.relief')}
+                  detail={t('pubChallenges.filters.reliefDetail')}
                 />
               </FilterGroup>
             </div>
@@ -425,18 +435,18 @@ export default function ChallengeList() {
           */}
           <p role="status" aria-live="polite" className="sr-only">
             {challenges.isSuccess
-              ? `${total} ${total === 1 ? 'challenge' : 'challenges'} match. Showing page ${page} of ${pageCount}.`
+              ? t('pubChallenges.list.status', { count: total, page, pages: pageCount })
               : ''}
           </p>
 
           <QueryState
             query={challenges}
-            errorTitle="Unable to load challenges."
+            errorTitle={t('pubChallenges.list.errorTitle')}
             loading={
               <div
                 role="status"
                 aria-live="polite"
-                aria-label="Loading challenges"
+                aria-label={t('pubChallenges.list.loading')}
                 className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"
               >
                 {Array.from({ length: PAGE_SIZE }).map((_, i) => (
@@ -460,18 +470,20 @@ export default function ChallengeList() {
                   <EmptyState
                     title={
                       activeFilters.length
-                        ? 'No challenges match these filters.'
-                        : 'No challenges are open right now.'
+                        ? t('pubChallenges.empty.filteredTitle')
+                        : t('pubChallenges.empty.title')
                     }
                     body={
                       activeFilters.length
-                        ? `These filters are narrowing the list: ${activeFilters.map((f) => f.label).join('; ')}.`
-                        : 'Departments publish here as soon as gate 1 clears. Until then the published results are the best picture of what this programme buys.'
+                        ? t('pubChallenges.empty.filteredBody', {
+                            filters: activeFilters.map((f) => f.label).join('; '),
+                          })
+                        : t('pubChallenges.empty.body')
                     }
                     action={
                       activeFilters.length
-                        ? { label: 'Clear filters', onClick: clearAll }
-                        : { label: 'See published results', to: link('/results') }
+                        ? { label: t('pubChallenges.empty.clearFilters'), onClick: clearAll }
+                        : { label: t('pubChallenges.empty.results'), to: link('/results') }
                     }
                   />
                 );
@@ -507,23 +519,23 @@ export default function ChallengeList() {
                     <div className="border-l-2 border-l-verify pl-4">
                       <p className="field-label mb-1 flex items-center gap-2 !text-saffron-ink">
                         <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
-                        Register
+                        {t('pubChallenges.list.registerEyebrow')}
                       </p>
                       <p className="font-display text-h3 text-ink tnum">
-                        {total} {total === 1 ? 'challenge' : 'challenges'}
+                        {t('pubChallenges.list.count', { count: total })}
                         {pageCount > 1 ? (
                           <span className="ml-2 text-label font-normal text-ink-soft">
-                            page {page} of {pageCount}
+                            {t('pubChallenges.list.pageOf', { page, pages: pageCount })}
                           </span>
                         ) : null}
                       </p>
                     </div>
                     <div className="w-full sm:w-64">
-                      <Field label="Sort by">
+                      <Field label={t('pubChallenges.list.sortLabel')}>
                         {({ id }) => (
                           <Select
                             id={id}
-                            options={SORTS}
+                            options={SORTS.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
                             value={filters.sort}
                             onChange={(e) => set('sort', e.target.value)}
                           />
@@ -542,11 +554,11 @@ export default function ChallengeList() {
                           className="press inline-flex items-center gap-2 rounded-pill border border-verify bg-verify-wash px-3 py-1 text-micro text-verify hover:bg-verify hover:text-white"
                         >
                           {f.label} <span aria-hidden>×</span>
-                          <span className="sr-only">Remove this filter</span>
+                          <span className="sr-only">{t('pubChallenges.list.removeFilter')}</span>
                         </button>
                       ))}
                       <Button tone="quiet" size="sm" onClick={clearAll}>
-                        Clear all
+                        {t('pubChallenges.list.clearAll')}
                       </Button>
                     </div>
                   ) : null}

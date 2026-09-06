@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { usePortalLink } from '@/lib/portal';
 import { rubric } from '@/config/rubrics';
 import { useApplication, usePilots } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
@@ -56,6 +57,7 @@ const NEXT_STEP: Record<string, { title: string; body: string; action?: { label:
 };
 
 export default function StartupApplicationDetail() {
+  const link = usePortalLink();
   const { id } = useParams();
   const query = useApplication(id);
   const pilots = usePilots();
@@ -114,7 +116,7 @@ export default function StartupApplicationDetail() {
                       </LinkButton>
                     </>
                   ) : null}
-                  <LinkButton size="sm" to={`/challenges/${c.slug}`}>
+                  <LinkButton size="sm" to={link(`/challenges/${c.slug}`)}>
                     Re-read the challenge
                   </LinkButton>
                 </div>
@@ -324,7 +326,7 @@ export default function StartupApplicationDetail() {
 
                   <p className="text-micro text-ink-soft">
                     Public clarifications on this challenge are published on{' '}
-                    <Link to={`/challenges/${c.slug}#qa`} className="underline underline-offset-2">
+                    <Link to={link(`/challenges/${c.slug}#qa`)} className="underline underline-offset-2">
                       the challenge page
                     </Link>
                     , where every applicant sees the same answers.

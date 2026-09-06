@@ -60,7 +60,7 @@ scenario-state sweep in a real browser.
 | `npm run typecheck` | clean |
 | `npm run lint` | clean, 0 errors 0 warnings |
 | `npm run build` | succeeds |
-| App shell, gzipped | 131.6 KB (entry + vendor + router + query + i18n + CSS) |
+| App shell, gzipped | 135.5 KB (entry + vendor + router + query + i18n + CSS) |
 | Route sweep, six portals | every route renders, exactly one `h1`, no page overflow |
 | Responsive, 360 / 768 / 1024 / 1440 | no horizontal page scroll anywhere |
 | Accessibility sweep, every route | no unnamed control, no unlabelled input, no heading jump, every table captioned |
@@ -392,6 +392,290 @@ it in all six places and link to it through `usePortalLink()`.
 dashboard rather than the demand board — no portal mounts the demand board, because a portal's own
 index is its landing page. Anything listing all seven public destinations must special-case it.
 
+### Hindi, and the guard that now enforces it
+
+Switching to Hindi changes the chrome — portal name, all six navigations, the
+account and alerts menus, the footer, the register's masthead and pager — and
+the page bodies of the public challenge register and document, the demand
+board, how-it-works, sign-in and registration, the department pipeline and
+workspace, pilots, results and the catalogue. **330 keys, both languages.**
+
+**Navigation labels are translation keys, never English strings.** Every shell
+holds `{ to, labelKey }`; `src/config/nav.ts` does the same. A label added to a
+bar without a key is the odd one out.
+
+#### scripts/check-i18n.mjs — because a missing key is invisible
+
+A key that does not exist does not throw. i18next falls back to English and,
+failing that, **prints the key itself** — so a half-finished translation looks
+like a working page with `deptCases.pipeline.heading` written across the top of
+it, and nothing in the build says otherwise.
+
+That is exactly what happened here: a translation pass converted eleven page
+files to `t()` calls and died before it wrote the bundles, leaving **283 keys
+called and absent**. Nothing caught it. `npm run check` now runs
+`check-i18n.mjs`, which fails on any key that is called but missing from either
+bundle, and prints the file that calls it.
+
+Two traps it was written around, both of which bit while writing it:
+- The bundles are TypeScript, not JSON, and are read with a small parser rather
+  than imported — a check that must compile the app before it can check the app
+  is a check nobody runs.
+- A line is a nested object when it **ends with** `{`, not when it contains one.
+  Half these values carry `{{interpolation}}`, and treating those as objects hid
+  every one of them; the first run reported seven false positives.
+
+#### What is still English
+
+48 of 70 page files, and the shared components that carry their own words:
+`Badge`/`StatusBadge` (Awarded, Cleared, Blocked), `SlaClock` (Overdue by three
+months, Due in 13 days), `Feedback` (the empty and error states), `QueryState`.
+Those four are the highest-value remaining targets by far — they appear on every
+screen, so translating them moves more visible text than any single page would.
+
+The mechanism is right and the work is mechanical: lift the string into
+`en.ts`, add the Hindi, call `t()`. `check-i18n` fails the build until both
+bundles agree, so it cannot be half-done again.
+
+Two rules the bundles keep:
+- Whole sentences with named interpolation, never concatenation; counts use
+  `_one`/`_other` plural keys.
+- **Legal text is absent on purpose.** Clause text is authoritative and lives in
+  `config/templates.ts` in its original language with a labelled plain-language
+  reading aid beside it. It is never machine-translated into something somebody
+  has to sign.
+
+### Two step indicators became one
+
+The challenge studio drew its progress twice: `WizardShell`'s numbered list down
+the side, and its own capsule rail across the top of the form, saying the same
+eight things. `WizardShell` now takes an optional `rail`, and the capsules —
+the better drawing, because they carry each step's state and not only its name —
+stand in the column. The form got the width back.
+
+### Pagination lives in the register, not in seven pages
+
+`LedgerTable` takes an optional `pageSize`. Sorting, filtering, the CSV export
+and the total all still act on the **whole** register; only what is drawn is
+cut. The pager keeps the first and last page and the three around you, with an
+ellipsis for the rest — twenty numbered buttons is not navigation, it is a
+second table.
+
+On: the evaluator queue (10), the validator queue (10), and the programme
+management registers — audit (20), configuration (12), users (12), rules (10),
+integrations (12). Off everywhere else, because a pager under six rows is chrome
+pretending to be navigation.
+
+### The chip is a label
+
+It briefly opened a menu of destinations, and every one of them was already a
+line above it in the bar. The bar carries the pages; the chip carries the name
+of the desk you are sitting at.
+
+### The carousel advances itself
+
+`CardCarousel` takes `dwellMs` (5s on the demand board) and moves on its own,
+wrapping at the end, so a reader who leaves it alone sees all nine stages. The
+live marker fills over the dwell, so the move is announced rather than sprung
+on them mid-sentence.
+
+**Any sign of attention stops it permanently** — hovering the run, tabbing into
+it, or touching a control. It does not resume. Resuming is what makes these
+things infuriating: the moment you look away from the card you were reading, it
+leaves. The `aria-live` region is also silent while it is advancing on its own;
+announcing a slide change every five seconds is a screen reader talking over
+whatever else the reader is doing.
+
+It does not run at all under `prefers-reduced-motion: reduce`. A thing that
+moves on its own is precisely what that setting is about, and the arrows and
+markers are still there.
+
+### Testing in the Browser pane: two things that look like bugs and are not
+
+Both of these cost real time before they were understood. Neither is a fault in
+the product.
+
+1. **Programmatic scrolling does not dispatch `scroll`.** `window.scrollTo` and
+   `scrollIntoView` move the page but fire no event, so every scroll-driven
+   feature reads as frozen — including the top bar's own progress hairline and
+   its scrolled state, which are pre-existing and known good. Fire
+   `window.dispatchEvent(new Event('scroll'))` after moving.
+
+2. **`prefers-reduced-motion: reduce` is ON in the pane.** So anything correctly
+   gated behind it — the carousel's autoplay, the reveal-on-scroll — is disabled
+   and looks broken. To verify such a feature, stub `window.matchMedia` to
+   return `{ matches: false }` for that query and force a remount by navigating
+   away and back client-side; the effect then re-reads it.
+
+Related, and also environmental: **the MSW session store is in memory and resets
+on reload.** A full page reload signs you back in as `USR-D01-OFF`. To test a
+signed-out or another-role state, drive the account menu in the UI rather than
+POSTing to `/api/auth/login`, because a raw fetch changes the server's mind
+without invalidating the client's cached session.
+
+### useActiveAnchor
+
+`src/lib/inview.ts`. An index beside a long document lights the entry for the
+section on screen, so it says where you are and not only where you could go. It
+measures positions against a reading line on every frame the page moves rather
+than watching for intersections — the observer version went stale on short
+windows, exactly as it did on the how-it-works act legend.
+
+**Verifying it in the Browser pane needs a synthetic event.** Programmatic
+`window.scrollTo` and `scrollIntoView` do not dispatch `scroll` in that
+automation context — the top bar's own progress hairline is frozen there too, so
+this is not a bug in the page. Fire `window.dispatchEvent(new Event('scroll'))`
+after moving, or every scroll-driven feature reads as broken.
+
+### Signing in
+
+`/login` leads with a real credential form — work email, password with a reveal
+toggle, `autocomplete="username"` and `"current-password"`, a Zod schema that
+checks shape only. **Sign-in deliberately does not apply the password policy:**
+doing so would lock out an account created before the policy was tightened,
+which is exactly the account that most needs to get in and change its password.
+
+The demonstration switcher is still there, below, because a reviewer should not
+have to hold seven sets of credentials to see seven screens — but it is no
+longer the headline.
+
+`POST /api/auth/login` now takes `{ email, password }` beside the old
+`{ userId }` / `{ role }`. **The one thing a real backend must replace** is
+marked in the handler and stated on the page itself: there are no stored hashes
+here, so the credential path resolves the address and accepts any password that
+was typed. A real implementation verifies the hash, rate-limits the attempt, and
+returns the same refusal for a wrong password as for an unknown address, so the
+response cannot be used to enumerate accounts. The client is already written
+against that contract — it renders whatever refusal it is given and never
+distinguishes the two cases.
+
+### The chip shows your portal, not the pavement
+
+Signed in, the chip under the wordmark lists **your portal and nothing else**.
+The public site is the front of the building; somebody already through the door
+does not need directions back to it. Signed out, the chip is the public site,
+because that is then the only thing there is — and signing out navigates to
+`/` rather than leaving you on a page you can no longer open.
+
+The Menu below the navigation breakpoint follows the same rule: it renders the
+`links` it was given, which is already the right list either way.
+
+### A sequence is not a grid
+
+`CardCarousel` (`src/components/patterns/CardCarousel.tsx`) reads a run of cards
+one at a time with the neighbours left on screen, set back. The demand board's
+nine stages use it: a grid of nine equal blocks said "here are nine things",
+which is true and not the point — they happen in order, and what is behind and
+what is ahead is the fact the section exists to state.
+
+It is a list, not a slideshow. Every card stays in the document and in the tab
+order, focus brings a card forward (otherwise tabbing lands on something scaled
+back and half transparent), and both controls update from the current index
+rather than the one their render closed over — three quick clicks advanced one
+card before that.
+
+### The three acts, drawn
+
+`src/components/domain/ActScene.tsx` holds three line-art scenes, one per act of
+How it works: an officer measuring what the problem costs today, three
+applications scored against one published rubric, a validator sealing a reading
+against its baseline. They are not stock illustration — each draws the artefact
+that act actually produces, in the product's own line weight, with every stroke
+a token, so they cannot drift from the palette and cost about a kilobyte each
+with no image request.
+
+### The notice board and the document room
+
+The public site is narrowed to what a procurement portal actually publishes:
+**you may read what is needed without an account, and you register to read the
+documents and anything that names a company.**
+
+Open to anyone: `/` the demand board, `/challenges` the register (every field on
+a card is one a tender notice carries anyway), `/how-it-works`, and the sign-in
+and sign-up routes. Everything else mounted on the public shell is wrapped in
+`RequireAccount` — the challenge *document* with its rubric, clauses, data tiers
+and field lists; `/results`, `/catalogue`, `/startups/:id` which join a named
+company to a measured verdict; `/templates`; `/transparency`. Only the PUBLIC
+shell's copies are guarded: being inside a portal already means being signed in,
+and `PortalGuard` has already refused anyone who should not be there.
+
+Like `PortalGuard`, it refuses in the open rather than redirecting, because a
+bounce to `/login` hides the boundary and loses the page the reader wanted.
+`publicLinksFor(signedIn)` in `src/config/nav.ts` drives the top bar and the
+footer, so neither offers a link the next click would refuse.
+
+**The gate was not enough on its own.** `/api/results` carries `startup.tradeName`
+and the validator's name for every finished pilot, and the demand board fetches
+it to draw three counts — so gating the page would have left the identifying
+payload crossing the wire to a signed-out visitor. The handler now projects by
+role: signed out it answers `{ id, outcome }` and nothing else. `ResultRow` makes
+every identifying field optional and `isIdentified()` narrows it, so a component
+cannot read a company name it was never sent.
+
+### The register — one LedgerTable, nineteen files
+
+`LedgerTable` is used by 20 call sites, so one redesign lifts every screen in the
+product and the blast radius is total. What it now does:
+
+- **One bound object.** The controls used to sit on their own sheet with a gap
+  under it, which read as a toolbar that happened to be near a table. Masthead,
+  ruled body and double-ruled total are one rounded panel.
+- **A deep masthead**, the same ground every page in this product opens on, with
+  a register mark, the row count, the active-filter pill and four drawn controls.
+  The `<thead>` continues it under a saffron hairline, so a long table's column
+  names stay the masthead when they stick.
+- **Filters moved out of the header cells** into a row of their own behind a
+  Filter toggle. They were making every header in the product twice as tall
+  whether or not anybody was filtering.
+- **An empty state that says what happened** — it names the filters that excluded
+  everything and offers the way back. This is the state readers actually reach;
+  emptiness before filtering is handled upstream by `QueryState` on 13 sites.
+- `title` is the one new prop, and it is optional.
+
+Four live bugs were fixed in the same pass, all found by surveying the call sites
+rather than by looking at the component:
+
+| Bug | Where it bit |
+|---|---|
+| A stale filter survived a wholesale `columns`/`rows` swap, so every row was excluded and the table read as empty | `/d/reports`: filter, switch report, blank page. Fixed by resetting on a stable `columns.map(c => c.key).join('|')` signature — keying off the array itself would loop on all 20 sites, since every one builds it inline |
+| A `<Link>` inside a clickable row navigated **and** fired the row handler | `/d/payments`: the pilot link also opened the approval dialog. The row handler now ignores clicks that land on `a,button,input,select,label` |
+| The frozen first column inherited a transparent background, so the table scrolled visibly under it | Every neutral row, below `md`. `TONE_WASH.neutral` is a real colour now, and the frozen cell carries the row's wash rather than inheriting it |
+| Row windowing assumed 44px rows and drifted | `/a/audit`, 400 rows, already taller than 44 with a 2-line actor and wrapped prose. Windowing is gone: above 200 rows the body scrolls in place instead. Doing it correctly needs measured heights, and rendering 400 rows costs less than getting that wrong |
+
+Also: `admin/Rules.tsx` gained the `min-w-0` its `1fr` track needed — without it
+the register's intrinsic width pushed the 420px rule editor off screen at `lg`.
+
+**Do not**, on the evidence of that survey: switch to `table-layout: fixed` (four
+sites declare under half their width), truncate or single-line cells (fifteen
+stack three lines in the first column), change `px-3 py-2 align-top` (four widget
+classes assume a plain block td, and `admin/Users`' `Switch` bleeds into the
+padding on purpose), move `TONE_FIGURE` onto the child (eleven right-aligned
+cells already put a widget with its own ink inside, and it should win), or add
+anything that measures on mount (`department/Pilots` renders inside a `<details>`,
+so it computes against a 0×0 box there and nowhere else).
+
+### Sign-up
+
+`/register` is a chooser; `/register/startup` and `/register/expert` are the forms.
+Government officers are deliberately absent — `account.officersSelfRegister` is
+`false`, and the page says why rather than leaving somebody hunting for a link.
+
+The account half was missing entirely: neither form collected a password. Both
+now open on the same account section (name, designation, work email, mobile,
+password, confirm) built from one shared Zod shape, so the two cannot drift.
+
+- `PasswordInput` has a real reveal toggle with a pressed state and announces
+  caps lock; `PasswordStrength` is never colour alone — segments, a verdict and
+  what is still missing.
+- `src/lib/password.ts` holds the measuring logic, because three things need the
+  same answer: the meter, the schema, and the server-side check.
+- **The rule is configuration.** `account.password.minLength`, `.minClasses`,
+  `.maxLength` and `account.terms.version` are in the ledger at `/a/config`, and
+  the consent records the version it accepted.
+- `POST /api/auth/register` parses with the same schema the form used, refuses a
+  duplicate address with 409, and returns a receipt — never an echo of what was
+  typed, and never the password.
+
 ### The view switcher — the public site is a place, not a dashboard
 
 The application opens on `/` while a session is already held (`USR-D01-OFF`, the department nodal
@@ -516,8 +800,27 @@ not the code — verify with `getComputedStyle` before believing it.
 | A10 | **A challenge owns gates 0–3 only; its pilot owns 4–6.** An awarded challenge has G0–G3 cleared and no open gate. | A challenge sitting at "gate 5" is meaningless — that decision is about the pilot. |
 | A11 | Charts are **lazily imported**; `vite.config.ts` has explicit `MOCK_DEPS` and `CHART_DEPS` lists so msw's and recharts' dependency trees stay out of the app shell. | §102's ≤200 KB gzipped public-route budget. Measured at 117.4 KB. |
 | A12 | **`src/mocks/browser.ts` falls back to patching `window.fetch`** when a service worker cannot register. | The in-app browser pane refuses service workers; without this the app is a blank page. |
-| A13 | **`PortalGuard`** names the portal, names who you are, and offers a real sign-in rather than redirecting or silently switching. | §97: never hide a boundary. A reload resets the in-memory session, so without this every direct link to `/e` or `/v` dead-ends. |
+| A13 | **`PortalGuard`** names the portal, names who you are, and refuses — with no way through. It used to offer one-click "Sign in as …" buttons for the roles the portal wanted; those are gone, and so is the seven-role switcher that was in the account menu. `/login` is the only door. | §97: never hide a boundary — but a refusal that hands you the way around itself is decoration. Changing who you are is an act, and it happens on the sign-in page. |
+| A14 | **Jurisdiction is a second, separate check from RBAC**, in `src/config/jurisdiction.ts` (the `REACH` table) and enforced by `src/mocks/handlers/jurisdiction.ts`, an `http.all('/api/*')` handler registered **first**. It resolves the record a path names, works out who owns it, and refuses with `403 OUT_OF_JURISDICTION` if the signed-in account has no standing. Returning nothing falls through to the real handler. | RBAC answers "may this role do this to this kind of thing". It cannot answer "is this your case" — a Pune officer holds identical permissions to a Kota officer and neither may open the other's file. Putting it in front of every endpoint means a link is never an authorisation, whatever produced it: a notification, an alert, a bookmark, a redirect after signing in. |
+| A15 | **`/api/challenges/:id` serves two documents.** `?view=case-file` is the department's working record (gate ladder, applicants, drafts); without it, the published notice, which any account may read. `useChallenge(id, 'case-file')` is passed by the department workspace only. | One URL cannot be both. Publishing a challenge publishes the challenge, not who applied to it or what the department decided. |
+| A16 | **The session starts signed out** (`src/mocks/store/session.ts`, `currentUserId = null`). | It used to open on `USR-D01-OFF`, so the product booted inside a department: the public site showed the document room, "Sign in" appeared to sign you in as a stranger, and a reload after signing out put you back at that stranger's desk. |
+| A17 | **Site policies live in `src/config/legal.ts`**, with English and Hindi in the same record, rendered by one page at `/legal/:document` mounted under every portal. | A policy is a document the programme revises, like every other rule in `config/`. Both languages together because a clause and its translation are one decision: edited apart, they drift, and a privacy policy that says two different things in two languages is worse than one that says nothing. **These are the site's own policies (privacy, terms, copyright, accessibility, disclaimer), authored bilingually — not the contract clause library, which stays English (see constraint 9).** |
 
+| A18 | **`Select` is not a `<select>`.** It renders a button and a listbox of our own (`src/components/ui/Field.tsx`), keeps the `e.target.value` call signature the twenty-two call sites already used, and measures on open so it flips upwards and caps its height inside whatever scrolls around it. | The closed control could be styled and the open list could not. Every filter, report picker and rubric chooser broke character at the moment somebody used it: system font, system blue, square corners, dropped over a page set in Bricolage and Anek. The cost is that keyboard, typeahead and click-away are now ours to maintain — written out in full rather than half-done. |
+| A19 | **`SectionRail` switches sections; it does not scroll to them** (`src/components/patterns/SectionRail.tsx`). Used by the clause library, the audit pack and the seven gates. | Three screens had grown a sticky index down the left that then rendered every section under it anyway. Picking "Intellectual property" out of a list of six means *show me that one*; what it did was scroll to a heading with the other five still attached. The rail carries a step to the next section at the foot of the panel, so the set is still one document. |
+| A20 | **A percentage against "Target achieved" is capped at 100** — `progress()` for the figure, `beyondTarget()` for the overshoot, both in `MeasurementChart.tsx`. `achievement()` stays uncapped for anything that wants the raw ratio. | It was printing "Target achieved · 111%". The 111 was real — the share of the *targeted improvement* made — but next to those words it reads as a share of the target, and a target cannot be 111 per cent achieved. The overshoot is now stated as what it is: how far past the target the reading sits. |
+| A21 | **A blocking screen takes the masthead.** The conflict declaration and the scoring workspace open on `PageHeader` like every other screen in the product. | They were the two screens in the evaluator portal that opened on a bare `h1` over loose paragraphs, which is why they read as unfinished. A screen that stops somebody has to be the most legible thing in the portal, not the least — it is the point at which a person is asked to put their name to a statement. |
+| A22 | **One page, one scroll.** `ScoreWorkspace` no longer caps and scrolls its proposal column; the case shell's rail and dock stick instead. | A column with `overflow-auto` inside a page that also scrolls gives the wheel two possible meanings depending on where the pointer is, and the page itself never moves. |
+
+| A23 | **Content is negotiated at the API.** The client sends `Accept-Language`; `ok()` runs the response through `src/mocks/content/localise.ts`, which walks every string and swaps the ones the dictionary in `src/content/` has. `challenge.title` is still a `string`. | The alternative was making every content field a bilingual pair and teaching fifty screens to unwrap it. Switching to Hindi used to give a Hindi masthead over an English challenge — title, department, state, company, officer, problem statement, baseline, unit all still English. That is an English product with translated furniture. |
+| A24 | **Identifiers are never translated** — the `NEVER_TRANSLATE` key list in the localiser. Case IDs, hashes, references, emails, slugs and foreign keys pass through untouched. | A case number is the same number in every language, and translating one would break search, sort and every join in the store. |
+| A25 | **Gate names, stage titles and role labels translate through `useSay()`** (`src/lib/contentText.ts`), not `t()`. | They are read straight out of `config/*` by the component that draws them, so no request carries them. Keying them would mean a second table kept in step by hand, and `check-i18n` cannot see a key assembled at run time anyway. |
+| A26 | **The two government emblems are slots, not artwork.** `public/emblems/` takes the official files; until then the Union mark is the national flag, drawn to the Flag Code proportions, and the state mark is a dashed plate. | The State Emblem of India is restricted by the 2005 Act to the authorities it names, and this build says on every policy page that it is a demonstration. Drawing a passable imitation would be worse than either shipping the real file or shipping nothing. |
+| A27 | **The sign-in and registration pages have their own shell** (`AuthShell`, `Shell bare`). No navigation, no account menu, no alerts. | The bar above a sign-in form carried the whole site, every link working. A door that offers seven ways not to go through it is a detour — and for somebody already signed in it handed them the full document room from the one screen whose purpose is to change who they are. |
+| A28 | **`startMockApi` probes `/api/health` before trusting the worker**, and falls back to the patched fetch if the answer did not come from a handler. `call()` reads the body as text and reports `MOCK_API_UNAVAILABLE` when it is not JSON. | `worker.start()` resolving means the registration succeeded, not that the worker is controlling the page. In the gap, requests reach the dev server, which answers every unknown path with index.html — so `.json()` threw a SyntaxError, which is not a `PrayogApiError`, so every screen reported its generic outage line. The sign-in page is where it showed, because it fetches on mount and is often the first page of a session. |
+| A29 | **A link inside a portal goes through `usePortalLink()`**, and `scripts/check-links.mjs` fails the build on a bare public path in any page that is not the public site. Where a portal already owns the path, the shared page gets an alias inside that portal — `/d/notices/:slug`, `/a/library` — rather than falling back to the public route. | Nine pages are mounted under every portal. Linking one by its public path swaps the entire shell: a startup clicked a challenge on Matches and landed on the public navigation with no way back. Six screens did it, and nothing caught it, because the link works — it just works somewhere else. The `OCCUPIED` fallback was the same bug in the helper that exists to prevent it. |
+| A30 | **The bar shows the destinations it can fit**, measured, not at a breakpoint — and re-measured once the webfonts land. When they do not fit the strip goes `invisible` and the Menu carries them. | `wide` was chosen when the widest portal had six destinations; the startup portal has eight and Hindi labels are longer. Measured at 1240px: Profile ended at x=934 and the controls began at x=859. A breakpoint cannot know how many destinations a portal has or how long they are in the language being read. |
+| A31 | **`prefers-reduced-motion` removes the animation, not the content.** The stage run still advances; the CSS drops the 520ms slide so it cuts instead of glides. | Stopping the run entirely cost those readers stages two to nine — the setting took the content, not just the motion. WCAG asks for a way to stop auto-updating content, and there are three: hover, focus, or any control. |
 ### Decisions that must NOT be changed without strong justification
 
 1. The **dwell rail** proportional spacing (D1).
@@ -531,6 +834,13 @@ not the code — verify with `getComputedStyle` before believing it.
 9. **Legal clause text is never machine-translated**; the Hindi bundle deliberately omits it.
 10. **Mock integrations are always labelled as mocks** (§111) — `/a/integrations` and the site footer both say so.
 11. The **fetch fallback** in `mocks/browser.ts` (A12).
+12. **Jurisdiction is checked at the API, in one place, before any handler** (A14). Never move it into a route guard, a link filter or a component — those answer "should we show this control", which is worth nothing to somebody who arrived from a notification or a pasted URL. `PortalGuard` and `RequireAccount` exist so a refusal reads as a sentence rather than a screen of failed panels; they are not the protection.
+13. **No refusal screen offers a way around itself** (A13). The demonstration accounts live on `/login` and nowhere else.
+14. **No native `<select>`** (A18). If a new control needs a dropdown, use `Select`.
+15. **A long register of sections gets a rail, not an index** (A19). If a page needs to show six of anything at full length, it shows one.
+16. **Seeded content is translated at the API, never in a component** (A23). A new content field needs a dictionary entry, not a bilingual type.
+17. **No official emblem artwork is committed to this repository** (A26). `public/emblems/` is the slot; both .svg and .png are tried.
+18. **Never link a shared page by its public path from inside a portal** (A29). `check-links` enforces it.
 
 ---
 
@@ -718,7 +1028,7 @@ Cream background · terracotta identity · black+neon · generic SaaS dashboard 
 | `query` | 10.4 KB | yes |
 | `i18n` | 15.0 KB | yes |
 | `index.css` | 9.7 KB | yes |
-| **App shell total** | **131.6 KB** | **under the 200 KB budget** |
+| **App shell total** | **135.5 KB** | **under the 200 KB budget** |
 | `forms` (zod + RHF) | 23.5 KB | no — lazy, register and wizard routes only |
 | `charts` (recharts + d3 + lodash) | 130.5 KB | no — lazy, inside `MeasurementChart` |
 | `mockapi` (msw + graphql + tldts + fixtures) | 168.2 KB | only because this build has no backend; a real deployment drops the import and the chunk with it |

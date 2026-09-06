@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { useResults } from '@/services/hooks';
+import { isIdentified, useResults } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
 import {
   OutcomePie,
@@ -25,23 +26,23 @@ import { usePortalLink } from '@/lib/portal';
  * the table and by the outcome column — because a finding that is worded one
  * way in the drawing and another way in the table is two facts to a reader.
  */
-const FINDINGS: readonly { key: OutcomeKey; label: string; detail: string; colour: string }[] = [
+const FINDINGS: readonly { key: OutcomeKey; labelKey: string; detailKey: string; colour: string }[] = [
   {
     key: 'validated',
-    label: 'Reproduced',
-    detail: 'A validator re-derived the claim from the department’s own records and got the same answer.',
+    labelKey: 'pubResults.finding.reproduced.label',
+    detailKey: 'pubResults.finding.reproduced.detail',
     colour: 'var(--verify)',
   },
   {
     key: 'validated_with_qualifications',
-    label: 'Reproduced with qualifications',
-    detail: 'The outcome held, with a caveat recorded on the file — usually a gap in the measurement.',
+    labelKey: 'pubResults.finding.qualified.label',
+    detailKey: 'pubResults.finding.qualified.detail',
     colour: 'var(--hold)',
   },
   {
     key: 'not_validated',
-    label: 'Not reproduced',
-    detail: 'The claim could not be reproduced. It stays here, because the next department is entitled to know.',
+    labelKey: 'pubResults.finding.notReproduced.label',
+    detailKey: 'pubResults.finding.notReproduced.detail',
     colour: 'var(--seal)',
   },
 ];
@@ -84,9 +85,10 @@ function SignedGlyph() {
  * taught once before it can be read. This is that once.
  */
 function MarkKey() {
+  const { t } = useTranslation();
   return (
     <div className="sheet px-5 py-4 shadow-raise">
-      <p className="field-label mb-3">What the marks mean</p>
+      <p className="field-label mb-3">{t('pubResults.results.markKey')}</p>
       <ul className="flex flex-wrap gap-2">
         {FINDINGS.map((f) => (
           <li
@@ -96,7 +98,7 @@ function MarkKey() {
             <span className={OUTCOME_INK[f.key]}>
               <OutcomeMark outcome={f.key} size={18} />
             </span>
-            <span className="text-micro text-ink">{f.label}</span>
+            <span className="text-micro text-ink">{t(f.labelKey)}</span>
           </li>
         ))}
       </ul>
@@ -105,6 +107,7 @@ function MarkKey() {
 }
 
 export default function Results() {
+  const { t } = useTranslation();
   const query = useResults();
 
   useReveal([query.data]);
@@ -113,20 +116,26 @@ export default function Results() {
   const rows = query.data?.data ?? [];
   const count = (key: OutcomeKey): number => rows.filter((r) => r.outcome === key).length;
 
-  const slices = FINDINGS.map((f) => ({ ...f, count: count(f.key) }));
+  const slices = FINDINGS.map((f) => ({
+    key: f.key,
+    label: t(f.labelKey),
+    detail: t(f.detailKey),
+    colour: f.colour,
+    count: count(f.key),
+  }));
 
   return (
     <div className="-mx-4 -mt-6 md:-mx-6">
       <Masthead
-        eyebrow="Published outcomes"
-        title="Every completed pilot, whether or not it worked."
-        lead="A pilot that failed is a result. Hiding it would make the successes worth less, and would leave the next department to make the same mistake at its own expense."
+        eyebrow={t('pubResults.results.eyebrow')}
+        title={t('pubResults.results.title')}
+        lead={t('pubResults.results.lead')}
         figures={[
-          { label: 'Pilots finished', value: num(rows.length) },
-          { label: 'Reproduced', value: num(count('validated')), tone: 'proved' },
+          { label: t('pubResults.results.figurePilots'), value: num(rows.length) },
+          { label: t('pubResults.finding.reproduced.label'), value: num(count('validated')), tone: 'proved' },
           /* A published failure is not open work and does not take the saffron;
              nobody is waiting on anybody for it. It is simply the record. */
-          { label: 'Not reproduced', value: num(count('not_validated')) },
+          { label: t('pubResults.finding.notReproduced.label'), value: num(count('not_validated')) },
         ]}
       />
 
@@ -137,13 +146,12 @@ export default function Results() {
       */}
       <section className="full-bleed bg-ledger px-4 py-12 md:px-6 lg:py-16" aria-labelledby="shape-heading">
         <div className="mx-auto max-w-shell">
-          <Eyebrow>The whole record</Eyebrow>
+          <Eyebrow>{t('pubResults.results.shape.eyebrow')}</Eyebrow>
           <h2 id="shape-heading" className="font-display text-h2 text-ink">
-            What happened to all {rows.length} of them
+            {t('pubResults.results.shape.heading', { count: rows.length })}
           </h2>
           <p className="mt-3 max-w-doc text-body text-ink-soft">
-            Three findings, and every finished pilot sits in exactly one of them. Each finding carries its own mark, so
-            the answer survives a photocopy and a reader who cannot separate the colours.
+            {t('pubResults.results.shape.lead')}
           </p>
 
           {/* A feature panel takes the large radius rather than the sheet's, so
@@ -155,10 +163,7 @@ export default function Results() {
               <span className="text-verify">
                 <SignedGlyph />
               </span>
-              <span>
-                Every finding was signed by someone who does not work for the department that ran the pilot, and who was
-                paid whether the answer was yes or no.
-              </span>
+              <span>{t('pubResults.results.shape.note')}</span>
             </p>
           </div>
         </div>
@@ -178,11 +183,10 @@ export default function Results() {
             <div className="rounded-t-block border-b border-rule bg-verify-wash px-5 py-6 md:px-8 md:py-7">
               <div className="flex flex-wrap items-end justify-between gap-6">
                 <div className="max-w-doc">
-                  <Eyebrow>Case by case</Eyebrow>
-                  <h2 className="font-display text-h2 text-ink">Every result on the record</h2>
+                  <Eyebrow>{t('pubResults.results.register.eyebrow')}</Eyebrow>
+                  <h2 className="font-display text-h2 text-ink">{t('pubResults.results.register.heading')}</h2>
                   <p className="mt-2 text-body text-ink-soft">
-                    Sortable and exportable. The validator who signed each finding is named, and the claim they tested is
-                    the one the department published before the pilot began.
+                    {t('pubResults.results.register.lead')}
                   </p>
                 </div>
                 <MarkKey />
@@ -192,20 +196,27 @@ export default function Results() {
             <div className="p-5 md:p-6">
               <QueryState
                 query={query}
-                errorTitle="Unable to load results."
+                errorTitle={t('pubResults.results.register.errorTitle')}
                 loading={<TableSkeleton rows={6} columns={6} />}
                 isEmpty={(d) => d.data.length === 0}
                 empty={{
-                  title: 'No pilots have completed yet.',
-                  body: 'Results appear here as soon as an independent validator signs a report.',
-                  action: { label: 'See open challenges', to: link('/challenges') },
+                  title: t('pubResults.results.register.emptyTitle'),
+                  body: t('pubResults.results.register.emptyBody'),
+                  action: { label: t('pubResults.results.register.emptyAction'), to: link('/challenges') },
                 }}
               >
                 {(payload) => (
+                  /*
+                   * Only the rows that actually carry their parties. This page
+                   * sits behind RequireAccount, so in practice that is all of
+                   * them — but the server decides the projection, and a table
+                   * that assumed would print "undefined" where a company name
+                   * belongs the day that changes.
+                   */
                   <LedgerTable
-                    caption="Completed pilots and their validated outcomes"
+                    caption={t('pubResults.results.register.caption')}
                     exportName="prayog-results"
-                    rows={payload.data}
+                    rows={payload.data.filter(isIdentified)}
                     rowKey={(r) => r.pilot.id}
                     rowTone={(r) =>
                       r.outcome === 'validated'
@@ -219,7 +230,7 @@ export default function Results() {
                     columns={[
                       {
                         key: 'case',
-                        header: 'Case',
+                        header: t('pubResults.results.column.case'),
                         width: '22%',
                         sortValue: (r) => r.pilot.caseId,
                         filterValue: (r) => `${r.pilot.caseId} ${r.challenge.title}`,
@@ -238,12 +249,12 @@ export default function Results() {
                       },
                       {
                         key: 'startup',
-                        header: 'Startup',
+                        header: t('pubResults.results.column.startup'),
                         sortValue: (r) => r.startup.tradeName,
                         filterValue: (r) => r.startup.tradeName,
                         render: (r) => (
                           <Link
-                            to={`/startups/${r.startup.slug}`}
+                            to={link(`/startups/${r.startup.slug}`)}
                             className="text-body text-ink underline underline-offset-2"
                           >
                             {r.startup.tradeName}
@@ -252,14 +263,14 @@ export default function Results() {
                       },
                       {
                         key: 'claimed',
-                        header: 'Claimed outcome',
+                        header: t('pubResults.results.column.claimed'),
                         width: '18%',
                         filterValue: (r) => r.claimed,
                         render: (r) => <span className="text-body text-ink">{r.claimed}</span>,
                       },
                       {
                         key: 'validated',
-                        header: 'Validated outcome',
+                        header: t('pubResults.results.column.validated'),
                         width: '24%',
                         filterValue: (r) => r.validated,
                         render: (r) => (
@@ -271,7 +282,7 @@ export default function Results() {
                       },
                       {
                         key: 'outcome',
-                        header: 'Outcome',
+                        header: t('pubResults.results.column.outcome'),
                         sortValue: (r) => r.outcome ?? 'zz',
                         /* The finding is a shape first and a colour second: the
                            same seal the circle above is drawn from. */
@@ -291,13 +302,15 @@ export default function Results() {
                       },
                       {
                         key: 'decision',
-                        header: 'Gate 6 decision',
+                        header: t('pubResults.results.column.decision'),
                         width: '18%',
                         filterValue: (r) => r.pathway ?? '',
                         render: (r) => (
                           <span>
                             <span className="block text-body text-ink">
-                              {r.pathway ? (PATHWAYS.find((p) => p.id === r.pathway)?.label ?? r.pathway) : 'Not yet decided'}
+                              {r.pathway
+                                ? (PATHWAYS.find((p) => p.id === r.pathway)?.label ?? r.pathway)
+                                : t('pubResults.results.notYetDecided')}
                             </span>
                             {r.reason ? (
                               <span className="mt-1 block max-w-[46ch] text-micro text-ink-soft">{r.reason}</span>
@@ -307,7 +320,7 @@ export default function Results() {
                       },
                       {
                         key: 'budget',
-                        header: 'Pilot budget',
+                        header: t('pubResults.shared.pilotBudget'),
                         unit: '₹',
                         align: 'right',
                         optional: true,
@@ -317,7 +330,7 @@ export default function Results() {
                       },
                       {
                         key: 'ended',
-                        header: 'Ended',
+                        header: t('pubResults.results.column.ended'),
                         align: 'right',
                         optional: true,
                         sortValue: (r) => r.pilot.endsOn,

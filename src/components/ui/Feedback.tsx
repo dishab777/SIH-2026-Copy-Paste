@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, LinkButton } from './Button';
 
 /** Skeletons are shaped like the content that replaces them, never a centred spinner. */
@@ -31,11 +32,12 @@ function HeadRail() {
 }
 
 export function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number; columns?: number }) {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label="Loading rows"
+      aria-label={t('states.loadingRows')}
       className="sheet-flat bg-gradient-to-b from-verify-wash to-transparent"
     >
       {/* A ledger loads head first, so the placeholder carries the head rule the
@@ -60,11 +62,12 @@ export function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number; column
 }
 
 export function PanelSkeleton({ lines = 4, title = true }: { lines?: number; title?: boolean }) {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label="Loading"
+      aria-label={t('states.loading')}
       className="sheet relative rounded-block bg-gradient-to-br from-verify-wash to-transparent px-6 py-6 md:px-7"
     >
       <HeadRail />
@@ -79,11 +82,12 @@ export function PanelSkeleton({ lines = 4, title = true }: { lines?: number; tit
 }
 
 export function StatSkeleton({ rows = 5 }: { rows?: number }) {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label="Loading figures"
+      aria-label={t('states.loadingFigures')}
       className="sheet-flat bg-gradient-to-b from-hold-wash to-transparent"
     >
       {Array.from({ length: rows }).map((_, i) => (
@@ -110,12 +114,13 @@ export function ProgressRing({
   label: string;
   size?: number;
 }) {
+  const { t } = useTranslation();
   const pct = Math.max(0, Math.min(1, value / max));
   const r = (size - 6) / 2;
   const c = 2 * Math.PI * r;
   return (
     <span className="inline-flex items-center gap-3">
-      <svg width={size} height={size} role="img" aria-label={`${label}: ${Math.round(pct * 100)} percent`}>
+      <svg width={size} height={size} role="img" aria-label={t('states.percentOf', { label, percent: Math.round(pct * 100) })}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="var(--verify-wash)" />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--rule)" strokeWidth="3" />
         <circle
@@ -232,6 +237,7 @@ export interface ErrorStateProps {
 
 /** Every error says what failed, what to do about it, and carries a reference. */
 export function ErrorState({ title, what, reference, details, onRetry, compact }: ErrorStateProps) {
+  const { t } = useTranslation();
   return (
     <div
       role="alert"
@@ -260,10 +266,12 @@ export function ErrorState({ title, what, reference, details, onRetry, compact }
       <div className="mt-4 flex flex-wrap items-center gap-4">
         {onRetry ? (
           <Button size="sm" onClick={onRetry} className="press">
-            Try again
+            {t('states.tryAgain')}
           </Button>
         ) : null}
-        {reference ? <span className="text-micro text-ink-soft">Reference {reference}</span> : null}
+        {reference ? (
+          <span className="text-micro text-ink-soft">{t('states.reference', { reference })}</span>
+        ) : null}
       </div>
     </div>
   );

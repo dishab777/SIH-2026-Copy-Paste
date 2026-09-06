@@ -2,14 +2,13 @@ import { Suspense, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TopBar } from './TopBar';
-import { Mark } from './Mark';
 import { CommandPalette } from './CommandPalette';
+import { SiteFooter } from './SiteFooter';
 import { PanelSkeleton } from '@/components/ui/Feedback';
 import { PortalGuard } from './PortalGuard';
 import type { Role } from '@/config/rbac';
 import { useUi } from '@/store/ui';
 import { platformNow } from '@/config/clock';
-import { usePortalLink } from '@/lib/portal';
 
 export function Toasts() {
   const toasts = useUi((s) => s.toasts);
@@ -51,11 +50,19 @@ export interface ShellProps {
   links: readonly { to: string; label: string; end?: boolean }[];
   sidebar?: { to: string; label: string; end?: boolean; hint?: string }[];
   sidebarTitle?: string;
+  /** One line saying what the index is for, under its title. */
+  sidebarNote?: string;
   wide?: boolean;
+  /**
+   * Strip the bar to the government strip, the language control and one way
+   * back. For the sign-in and registration pages, where the site's own
+   * navigation is not what the reader is there for.
+   */
+  bare?: boolean;
   children?: ReactNode;
 }
 
-export function Shell({ allow, links, sidebar, sidebarTitle, wide, children }: ShellProps) {
+export function Shell({ allow, links, sidebar, sidebarTitle, sidebarNote, wide, bare, children }: ShellProps) {
   const { t } = useTranslation();
   const body = children ?? <Outlet />;
   const guarded = allow ? <PortalGuard allow={allow}>{body}</PortalGuard> : body;
@@ -64,13 +71,16 @@ export function Shell({ allow, links, sidebar, sidebarTitle, wide, children }: S
       <a href="#main" className="skip-link text-label">
         {t('app.skipToContent')}
       </a>
-      <TopBar links={links} />
+      <TopBar links={links} bare={bare} />
       <div className={['mx-auto flex max-w-shell gap-6 px-4 py-6 md:px-6', wide ? '' : ''].join(' ')}>
         {sidebar?.length ? (
           <nav aria-label="Section" className="hidden w-[208px] shrink-0 lg:block">
             <div className="sheet-flat sticky top-20">
               {sidebarTitle ? (
-                <p className="border-b border-ink px-4 py-2 text-label text-ink">{sidebarTitle}</p>
+                <div className="border-b border-ink px-4 py-2">
+                  <p className="text-label text-ink">{sidebarTitle}</p>
+                  {sidebarNote ? <p className="mt-0.5 text-micro font-normal text-ink-soft">{sidebarNote}</p> : null}
+                </div>
               ) : null}
               <ul>
                 {sidebar.map((s) => (
@@ -102,58 +112,6 @@ export function Shell({ allow, links, sidebar, sidebarTitle, wide, children }: S
       <Toasts />
       <SiteFooter />
     </div>
-  );
-}
-
-/**
- * The page closes on the same ground it opens on.
- *
- * The bar is deep on every route and so is this, which means every screen in
- * the product — a public landing page or a payments ledger — is bookended the
- * same way and the work sits on paper in between. Nothing about the palette
- * depends on which portal you are in.
- */
-function SiteFooter() {
-  // The footer links to shared pages, so they follow you into your portal too.
-  const link = usePortalLink();
-  return (
-    <footer className="deep mt-16 border-t-2 border-t-saffron">
-      <div className="mx-auto flex max-w-shell flex-wrap items-start justify-between gap-6 px-4 py-8 md:px-6">
-        <div className="max-w-doc">
-          <p className="flex items-center gap-2 font-display text-h3 text-deep-ink">
-            <Mark size={20} tone="deep" />
-            PRAYOG
-            <span className="text-label font-normal text-saffron">from challenge to contract</span>
-          </p>
-          <p className="mt-2 text-micro text-deep-dim">
-            A demonstration build. Government integrations shown here are mock providers; no live government API is
-            called, and signatures are demonstration records rather than legally executed signatures.
-          </p>
-        </div>
-        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-micro text-deep-dim">
-          <li>
-            <NavLink to={link('/how-it-works')} className="underline underline-offset-2 hover:text-saffron">
-              How it works
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to={link('/transparency')} className="underline underline-offset-2 hover:text-saffron">
-              Transparency
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to={link('/templates')} className="underline underline-offset-2 hover:text-saffron">
-              Templates
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/dev/styleguide" className="underline underline-offset-2 hover:text-saffron">
-              Style guide
-            </NavLink>
-          </li>
-        </ul>
-      </div>
-    </footer>
   );
 }
 

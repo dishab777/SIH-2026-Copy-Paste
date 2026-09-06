@@ -6,6 +6,7 @@ import type { ApiError, ApiSuccess } from '@/types/models';
 import { scenario, scenarioDelay } from '../scenarios';
 import { getDb } from '../store/db';
 import { currentRole } from '../store/session';
+import { localise } from '../content/localise';
 
 export function servedAt(): string {
   const now = getDb().now();
@@ -14,8 +15,22 @@ export function servedAt(): string {
   return (scenario() === 'stale' ? subHours(now, 3) : now).toISOString();
 }
 
+/**
+ * The language this request asked for.
+ *
+ * MSW resolvers do not all receive the request object, and threading one
+ * through ninety handlers to carry a single header would be a poor trade. The
+ * fetch wrapper is the only caller, it always sets the header, and the last
+ * value it set is what the response being built right now belongs to.
+ */
+let askedFor = 'en';
+export function rememberLanguage(header: string | null): void {
+  askedFor = header?.toLowerCase().startsWith('hi') ? 'hi' : 'en';
+}
+
 export function ok<T>(data: T, message?: string): Response {
-  const body: ApiSuccess<T> = { success: true, data, servedAt: servedAt(), ...(message ? { message } : {}) };
+  const served: T = askedFor === 'hi' ? localise(data) : data;
+  const body: ApiSuccess<T> = { success: true, data: served, servedAt: servedAt(), ...(message ? { message } : {}) };
   return HttpResponse.json(body, { status: 200 });
 }
 

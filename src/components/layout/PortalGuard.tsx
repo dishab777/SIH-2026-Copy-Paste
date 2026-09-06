@@ -1,22 +1,49 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ROLES, portalFor, type Role } from '@/config/rbac';
-import { useSession, useSignIn } from '@/services/hooks';
-import { Button, LinkButton } from '@/components/ui/Button';
+import { useTranslation } from 'react-i18next';
+import { portalFor, type Role, type RoleDefinition } from '@/config/rbac';
+import { reachLabel } from '@/config/jurisdiction';
+import { useRoleText } from '@/lib/roleText';
+import { useSession } from '@/services/hooks';
 import { ErrorState, PanelSkeleton } from '@/components/ui/Feedback';
+import { Refused } from './Refused';
 
 /**
- * A portal is for one set of roles. Rather than silently redirecting — which
- * would hide the fact that a boundary exists — this says who the portal is for,
- * who you currently are, and offers an explicit sign-in.
+ * What each portal is called, in ordinary words.
  *
- * The switch is a real sign-in through the API, so the server changes its mind
- * about you too. It is not a client-side bypass.
+ * Held as a table rather than assembled from the route, so `npm run check` can
+ * see the keys. A key built from a value at run time is invisible to the bundle
+ * check, and would go missing in one language with nothing to say so.
+ */
+const PORTAL_NAME: Readonly<Record<RoleDefinition['portal'], { titleKey: string }>> = {
+  '/': { titleKey: 'portal.public' },
+  '/s': { titleKey: 'portal.s' },
+  '/d': { titleKey: 'portal.d' },
+  '/e': { titleKey: 'portal.e' },
+  '/v': { titleKey: 'portal.v' },
+  '/a': { titleKey: 'portal.a' },
+};
+
+/**
+ * A portal is for one set of roles, and this is the door.
+ *
+ * It used to offer a row of buttons that signed you straight in as whichever
+ * role the portal wanted, which made the boundary decorative: anyone who
+ * arrived at a department screen from a notification, an alert or a pasted link
+ * was one click from being a department officer. A refusal that hands you the
+ * way around itself is not a refusal.
+ *
+ * So it refuses, and the only way past is the sign-in page — where signing in
+ * means becoming somebody else, on the record, rather than changing a view.
+ *
+ * This is not the protection either way. The API refuses these requests for
+ * the reader's actual account, in front of every endpoint, whatever the client
+ * believes about itself. This is what that refusal looks like early, so a
+ * reader gets a sentence instead of a screen of failed panels.
  */
 export function PortalGuard({ allow, children }: { allow: readonly Role[]; children: ReactNode }) {
+  const { t } = useTranslation();
   const session = useSession();
-  const signIn = useSignIn();
-  const navigate = useNavigate();
+  const roleText = useRoleText();
 
   if (session.isPending) return <PanelSkeleton lines={6} />;
 
@@ -25,10 +52,10 @@ export function PortalGuard({ allow, children }: { allow: readonly Role[]; child
   if (session.isError || !session.data) {
     return (
       <div className="mx-auto max-w-[680px] py-8">
-        <h1 className="mb-4 text-h1 text-ink">Your sign-in could not be read.</h1>
+        <h1 className="mb-4 text-h1 text-ink">{t('refused.sessionUnreadable')}</h1>
         <ErrorState
-          title="This portal cannot tell whether you may open it."
-          what="The service did not answer when asked who you are. Nothing has changed on any case, and nothing you had entered has been lost."
+          title={t('refused.sessionUnreadableTitle')}
+          what={t('refused.sessionUnreadableWhat')}
           onRetry={() => void session.refetch()}
         />
       </div>
@@ -38,42 +65,43 @@ export function PortalGuard({ allow, children }: { allow: readonly Role[]; child
   const role: Role = session.data.data.role ?? 'public';
   if (allow.includes(role)) return <>{children}</>;
 
-  const intended = ROLES.find((r) => r.id === allow[0]);
-  const current = ROLES.find((r) => r.id === role);
+  const department = session.data.data.department;
+  // The portal's own name, translated. '/d' is not an answer to 'where am I'.
+  const portal = t(PORTAL_NAME[portalFor(allow[0] ?? 'public')].titleKey);
 
   return (
-    <div className="mx-auto max-w-[680px] py-8">
-      <div className="sheet-flat border-l-2 border-l-hold">
-        <div className="px-6 py-6">
-          <p className="text-label text-ink-soft">This portal is for {intended?.label.toLowerCase()}</p>
-          <h1 className="mt-1 text-h1 text-ink">
-            You are signed in as {current?.label.toLowerCase() ?? 'a member of the public'}.
-          </h1>
-          <p className="mt-3 max-w-doc text-body text-ink-soft">
-            {intended?.description} Nothing has been hidden from you — the API refuses these requests for your current
-            role, and switching is a real sign-in rather than a change of view.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            {allow.map((r) => {
-              const def = ROLES.find((x) => x.id === r);
-              return (
-                <Button
-                  key={r}
-                  tone={r === allow[0] ? 'primary' : 'secondary'}
-                  loading={signIn.isPending && signIn.variables?.role === r}
-                  loadingLabel="Signing in"
-                  onClick={() => signIn.mutate({ role: r })}
-                >
-                  Sign in as {def?.label.toLowerCase()}
-                </Button>
-              );
-            })}
-            <Button onClick={() => navigate(portalFor(role))}>Back to your own portal</Button>
-            <LinkButton to="/login">See every demonstration account</LinkButton>
-          </div>
-        </div>
+    <Refused
+      eyebrow={t('refused.portalEyebrow')}
+      title={
+        role === 'public'
+          ? t('refused.portalSignedOut', { portal })
+          : t('refused.portalWrongRole', { portal })
+      }
+      reasons={[
+        role === 'public'
+          ? t('refused.portalSignedOutWhy')
+          : t('refused.portalWrongRoleWhy', { role: roleText(role).label }),
+        department
+          ? t('refused.postedTo', {
+              department: department.shortName,
+              district: department.district,
+              state: department.state,
+              reach: reachLabel(role).toLowerCase(),
+            })
+          : t('refused.reachIs', { reach: reachLabel(role).toLowerCase() }),
+      ]}
+    >
+      <div className="sheet-flat">
+        <p className="border-b border-ink px-4 py-2 text-label text-ink">{t('refused.whoWorksHere')}</p>
+        <ul>
+          {allow.map((r) => (
+            <li key={r} className="ledger-row px-4 py-2">
+              <span className="block text-body text-ink">{roleText(r).label}</span>
+              <span className="block text-micro text-ink-soft">{roleText(r).description}</span>
+            </li>
+          ))}
+        </ul>
       </div>
-    </div>
+    </Refused>
   );
 }

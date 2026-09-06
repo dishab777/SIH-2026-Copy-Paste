@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useSay } from '@/lib/contentText';
 import { GATES } from '@/config/gates';
 
 /**
@@ -33,6 +34,7 @@ type Row = { id: string; name: string; state: 'cleared' | 'open' | 'ahead' };
 const CLEARED_ON = ['12 Jun', '28 Jun', '19 Jul'];
 
 export function GateFile({ at = 3, caseId, title, district }: GateFileProps) {
+  const say = useSay();
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState<{ x: number; y: number } | null>(null);
 
@@ -65,7 +67,7 @@ export function GateFile({ at = 3, caseId, title, district }: GateFileProps) {
 
   const rows: Row[] = GATES.map((g, i) => ({
     id: g.id,
-    name: g.name,
+    name: say(g.name),
     state: i < at ? 'cleared' : i === at ? 'open' : 'ahead',
   }));
 
@@ -76,7 +78,7 @@ export function GateFile({ at = 3, caseId, title, district }: GateFileProps) {
       {/* One sentence carries the whole drawing for a screen reader. */}
       <p className="sr-only">
         {title ? `${title}. ` : ''}This case has cleared {at} of {GATES.length} gates. It is standing on gate {at},{' '}
-        {GATES[at]?.name}. Each gate is a written decision with an owner and a date.
+        {say(GATES[at]?.name ?? '')}. Each gate is a written decision with an owner and a date.
       </p>
 
       <div aria-hidden className="file-body" style={style}>

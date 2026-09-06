@@ -1,11 +1,18 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ROLES, portalFor, type RoleDefinition } from '@/config/rbac';
 import { useAccounts, useSignIn } from '@/services/hooks';
+import { signInSchema, type SignInInput } from '@/schemas/auth';
 import { PageHeader } from '@/components/layout/Shell';
 import { QueryState } from '@/components/layout/QueryState';
-import { InlineNote, StatSkeleton } from '@/components/ui/Feedback';
+import { ErrorState, InlineNote, StatSkeleton } from '@/components/ui/Feedback';
 import { Button, LinkButton } from '@/components/ui/Button';
+import { Field, Input, PasswordInput } from '@/components/ui/Field';
+import { PrayogApiError } from '@/services/api';
+import { useUi } from '@/store/ui';
 
 type Portal = RoleDefinition['portal'];
 
@@ -15,14 +22,17 @@ type Portal = RoleDefinition['portal'];
  * The route is the record and the role register in config owns which role goes
  * where; this only says out loud which desk a person is about to sit down at,
  * because "/v" is not an answer to that question.
+ *
+ * The map holds translation keys rather than names: it is module scope, where
+ * `t` does not exist, so the name is read at the render site.
  */
 const PORTAL_NAMES: Record<Portal, string> = {
-  '/': 'Public site',
-  '/s': 'Startup portal',
-  '/d': 'Department portal',
-  '/e': 'Evaluation portal',
-  '/v': 'Validation portal',
-  '/a': 'Programme portal',
+  '/': 'auth.signIn.portal.public',
+  '/s': 'auth.signIn.portal.startup',
+  '/d': 'auth.signIn.portal.department',
+  '/e': 'auth.signIn.portal.evaluation',
+  '/v': 'auth.signIn.portal.validation',
+  '/a': 'auth.signIn.portal.programme',
 };
 
 /**
@@ -102,16 +112,38 @@ function PortalMark({ portal }: { portal: Portal }) {
 }
 
 export default function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const accounts = useAccounts();
   const signIn = useSignIn();
+  const pushToast = useUi((s) => s.pushToast);
+
+  const form = useForm<SignInInput>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: '', password: '' },
+  });
+  const { errors } = form.formState;
+
+  /* Only the credential attempt is an error on this screen. The demonstration
+     switcher below has its own buttons and reports its own failure. */
+  const credentialAttempt = signIn.variables?.email !== undefined;
+
+  function onSubmit(values: SignInInput): void {
+    signIn.mutate(values, {
+      onSuccess: (res) => {
+        const role = res.data.user?.role;
+        pushToast('verify', res.message ?? t('auth.signIn.signedIn'));
+        navigate(role ? portalFor(role) : '/');
+      },
+    });
+  }
 
   return (
     <div className="mx-auto max-w-[880px]">
       <PageHeader
-        eyebrow="Demonstration access"
-        title="Sign in"
-        lead="This build stands in for government single sign-on with a demonstration account per role. Signing in changes what the API allows, not only what the screen shows."
+        eyebrow={t('auth.signIn.eyebrow')}
+        title={t('auth.signIn.title')}
+        lead={t('auth.signIn.lead')}
         aside={
           <span className="inline-flex items-center gap-2 rounded-pill border border-deep-rule bg-deep-2 px-4 py-1.5 text-micro text-deep-dim">
             <svg
@@ -129,10 +161,129 @@ export default function Login() {
               <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
               <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
             </svg>
-            No password is collected
+            {t('auth.signIn.encrypted')}
           </span>
         }
       />
+
+      {/* ------------------------------------------------------- credentials */}
+      <section className="glass panel-in mb-8 rounded-block px-5 py-6 md:px-8 md:py-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+          <div>
+            <p className="field-label mb-2 flex items-center gap-2 !text-saffron-ink">
+              <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
+              {t('auth.signIn.accountEyebrow')}
+            </p>
+            <h2 className="font-display text-h2 text-ink">{t('auth.signIn.heading')}</h2>
+            <p className="mt-2 max-w-doc text-body text-ink-soft">{t('auth.signIn.note')}</p>
+
+            {signIn.isError && credentialAttempt ? (
+              <div className="mt-5">
+                <ErrorState
+                  title={t('auth.signIn.errorTitle')}
+                  what={
+                    signIn.error instanceof PrayogApiError
+                      ? signIn.error.message
+                      : t('auth.signIn.errorWhat')
+                  }
+                  details={signIn.error instanceof PrayogApiError ? signIn.error.details : undefined}
+                  compact
+                />
+              </div>
+            ) : null}
+
+            <form
+              noValidate
+              onSubmit={form.handleSubmit(onSubmit, () => {
+                document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+              })}
+              className="mt-6 flex flex-col gap-6"
+            >
+              <Field label={t('auth.signIn.emailLabel')} required error={errors.email?.message}>
+                {({ id, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    type="email"
+                    inputMode="email"
+                    autoComplete="username"
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                    placeholder={t('auth.signIn.emailPlaceholder')}
+                    {...form.register('email')}
+                  />
+                )}
+              </Field>
+
+              <Field
+                label={t('auth.signIn.passwordLabel')}
+                required
+                error={errors.password?.message}
+                aside={
+                  <Link
+                    to="/register"
+                    className="text-micro text-ink-soft underline underline-offset-2 hover:text-verify"
+                  >
+                    {t('auth.signIn.noAccountLink')}
+                  </Link>
+                }
+              >
+                {({ id, describedBy, invalid }) => (
+                  <PasswordInput
+                    id={id}
+                    autoComplete="current-password"
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                    {...form.register('password')}
+                  />
+                )}
+              </Field>
+
+              <div className="flex flex-wrap items-center gap-4">
+                <Button
+                  type="submit"
+                  tone="primary"
+                  loading={signIn.isPending && credentialAttempt}
+                  loadingLabel={t('auth.signIn.signingIn')}
+                >
+                  {t('auth.signIn.submit')}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    pushToast(
+                      'hold',
+                      t('auth.signIn.recoveryTitle'),
+                      t('auth.signIn.recoveryDetail'),
+                    )
+                  }
+                  className="text-label text-ink-soft underline underline-offset-2 hover:text-verify"
+                >
+                  {t('auth.signIn.forgot')}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="lg:border-l lg:border-l-rule lg:pl-8">
+            <InlineNote tone="hold" title={t('auth.signIn.backendTitle')}>
+              <p>{t('auth.signIn.backendBody')}</p>
+              <p className="mt-2">{t('auth.signIn.backendContract')}</p>
+            </InlineNote>
+
+            <div className="mt-6 rounded-block border border-rule bg-ledger px-5 py-4">
+              <p className="field-label">{t('auth.signIn.noAccountTitle')}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <LinkButton size="sm" tone="primary" to="/register">
+                  {t('auth.signIn.createAccount')}
+                </LinkButton>
+                <LinkButton size="sm" to="/">
+                  {t('auth.signIn.keepBrowsing')}
+                </LinkButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/*
        * The card floats over the page wash rather than sitting flat on it,
@@ -143,25 +294,15 @@ export default function Login() {
         <div className="mb-6 border-b border-rule pb-6">
           <p className="field-label mb-2 flex items-center gap-2 !text-saffron-ink">
             <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
-            Choose an account
+            {t('auth.signIn.demoEyebrow')}
           </p>
-          <h2 className="font-display text-h2 text-ink">Which desk are you sitting at?</h2>
-          <p className="mt-2 max-w-doc text-body text-ink-soft">
-            Every account below is a real role with real permissions. What you can see, sign and pay for changes with
-            the one you pick.
-          </p>
-        </div>
-
-        <div className="mb-8">
-          <InlineNote tone="hold" title="Mock provider">
-            Government single sign-on is represented by a mock provider. No live government authentication service is
-            called by this build, and no password is collected.
-          </InlineNote>
+          <h2 className="font-display text-h2 text-ink">{t('auth.signIn.demoHeading')}</h2>
+          <p className="mt-2 max-w-doc text-body text-ink-soft">{t('auth.signIn.demoLead')}</p>
         </div>
 
         <QueryState
           query={accounts}
-          errorTitle="Unable to load demonstration accounts."
+          errorTitle={t('auth.signIn.demoErrorTitle')}
           loading={<StatSkeleton rows={7} />}
         >
           {(payload) => {
@@ -182,11 +323,11 @@ export default function Login() {
                         <PortalMark portal={group.portal} />
                       </span>
                       <div className="min-w-0">
-                        <h3 className="font-display text-h3 text-ink">{PORTAL_NAMES[group.portal]}</h3>
+                        <h3 className="font-display text-h3 text-ink">{t(PORTAL_NAMES[group.portal])}</h3>
                         <p className="text-micro text-ink-soft">
                           <span className="type-register">{group.portal}</span>
                           {' · '}
-                          {group.users.length === 1 ? 'one account' : `${group.users.length} accounts`}
+                          {t('auth.signIn.accounts', { count: group.users.length })}
                         </p>
                       </div>
                     </div>
@@ -227,13 +368,13 @@ export default function Login() {
                                   <Button
                                     tone="primary"
                                     loading={signIn.isPending && signIn.variables?.userId === u.id}
-                                    loadingLabel="Signing in"
+                                    loadingLabel={t('auth.signIn.signingIn')}
                                     onClick={() =>
                                       signIn.mutate({ userId: u.id }, { onSuccess: () => navigate(portalFor(u.role)) })
                                     }
                                     className="w-full md:w-auto"
                                   >
-                                    Sign in as {role?.label.toLowerCase()}
+                                    {t('auth.signIn.signInAs', { role: role?.label.toLowerCase() ?? '' })}
                                   </Button>
                                 </div>
                               </div>
@@ -250,18 +391,6 @@ export default function Login() {
         </QueryState>
       </section>
 
-      <div className="sheet mt-8 rounded-block px-5 py-6 md:px-8">
-        <p className="field-label mb-2 flex items-center gap-2 !text-saffron-ink">
-          <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
-          No account yet
-        </p>
-        <h2 className="font-display text-h3 text-ink">Three other ways in</h2>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <LinkButton to="/register/startup">Register a startup</LinkButton>
-          <LinkButton to="/register/expert">Register as an evaluator</LinkButton>
-          <LinkButton to="/">Keep browsing as a member of the public</LinkButton>
-        </div>
-      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { LedgerTable } from '@/components/ledger/LedgerTable';
 import { TableSkeleton, InlineNote } from '@/components/ui/Feedback';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { SlaClock } from '@/components/domain/SlaClock';
-import { achievement } from '@/components/charts/MeasurementChart';
+import { progress } from '@/components/charts/MeasurementChart';
 import { day, money, num, percent, countOf } from '@/lib/format';
 
 export default function ValidatorQueue() {
@@ -48,6 +48,7 @@ export default function ValidatorQueue() {
           return (
             <LedgerTable
               caption="Pilots for independent validation"
+              pageSize={10}
               exportName="prayog-validation-queue"
               rows={payload.data}
               rowKey={(r) => r.pilot.id}
@@ -109,7 +110,7 @@ export default function ValidatorQueue() {
                           {num(k.baseline, 1)} → {num(k.current, 1)} {k.unit}, against a target of {num(k.target, 1)}
                         </span>
                         <span className="mt-1 block text-micro text-ink-soft tnum">
-                          {percent(achievement(k))} of target · {countOf(k.series.length, 'reading')}
+                          {percent(progress(k))} of target · {countOf(k.series.length, 'reading')}
                         </span>
                       </span>
                     );

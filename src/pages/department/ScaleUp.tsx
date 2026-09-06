@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePortalLink } from '@/lib/portal';
 import { Link, useParams } from 'react-router-dom';
 import { DISTRICTS } from '@/mocks/fixtures/reference';
 import { citationShort } from '@/config/policies';
@@ -20,6 +21,7 @@ import { PrayogApiError } from '@/services/api';
 import { useUi } from '@/store/ui';
 
 export default function ScaleUp() {
+  const link = usePortalLink();
   const { pilotId } = useParams();
   const query = useProcurement(pilotId);
   const selectPathway = useSelectPathway(pilotId);
@@ -487,7 +489,7 @@ export default function ScaleUp() {
                               Regenerate the package
                             </Button>
                             {d.scaleUp.catalogueSolutionId ? (
-                              <LinkButton to={`/catalogue/${d.scaleUp.catalogueSolutionId}`}>
+                              <LinkButton to={link(`/catalogue/${d.scaleUp.catalogueSolutionId}`)}>
                                 View the catalogue record
                               </LinkButton>
                             ) : null}

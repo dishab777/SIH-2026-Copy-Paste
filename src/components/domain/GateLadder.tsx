@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useSay } from '@/lib/contentText';
 import { GATES, gateSlaDays, type GateId } from '@/config/gates';
 import { durationWords } from '@/lib/format';
 import type { GateRecord } from '@/types/models';
@@ -60,6 +61,7 @@ function statusWord(status: GateRecord['status']): string {
 }
 
 export function GateLadder({ records, currentGate, ownerNames = {}, orientation = 'vertical', onSelect }: GateLadderProps) {
+  const say = useSay();
   const navigate = useNavigate();
   const ordered = GATES.map((g) => records.find((r) => r.gate === g.id)).filter((r): r is GateRecord => Boolean(r));
 
@@ -102,7 +104,7 @@ export function GateLadder({ records, currentGate, ownerNames = {}, orientation 
                   {r.dwellDays > 0 ? (
                     <span className="text-micro text-ink-soft tnum">Held {durationWords(r.dwellDays)}</span>
                   ) : null}
-                  <span className="sr-only">{def.name}</span>
+                  <span className="sr-only">{say(def.name)}</span>
                 </button>
               </li>
             );
@@ -176,7 +178,7 @@ export function GateLadder({ records, currentGate, ownerNames = {}, orientation 
                       </span>
                     ) : null}
                   </span>
-                  <span className="block text-micro text-ink-soft">{def.name}</span>
+                  <span className="block text-micro text-ink-soft">{say(def.name)}</span>
                   <span
                     className={[
                       'mt-0.5 block text-micro',

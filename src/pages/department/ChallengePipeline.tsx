@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { GATES } from '@/config/gates';
 import { can } from '@/config/rbac';
@@ -11,7 +12,7 @@ import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button, LinkButton } from '@/components/ui/Button';
 import { SlaClock } from '@/components/domain/SlaClock';
 import { gateSlaDays } from '@/config/gates';
-import { countOf, daysBetween, money } from '@/lib/format';
+import { daysBetween, money } from '@/lib/format';
 
 /*
  * The way into the challenge studio.
@@ -22,6 +23,7 @@ import { countOf, daysBetween, money } from '@/lib/format';
  * that hold the permission — the same permission the API re-checks.
  */
 function StudioLead() {
+  const { t } = useTranslation();
   return (
     <section
       aria-labelledby="studio-lead"
@@ -29,20 +31,19 @@ function StudioLead() {
     >
       <div className="flex flex-col gap-5 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <p className="field-label mb-2">Stage 1 · clears gate 0</p>
+          <p className="field-label mb-2">{t('deptCases.pipeline.studio.eyebrow')}</p>
           <h2 id="studio-lead" className="font-display text-h3 text-ink">
-            Start a new challenge
+            {t('deptCases.pipeline.studio.heading')}
           </h2>
           <p className="mt-2 max-w-doc text-body text-ink-soft">
-            Begin with the problem you would fix tomorrow if you could. The studio turns it into an outcome a startup
-            can be paid to achieve, rather than a product you have already chosen.
+            {t('deptCases.pipeline.studio.lead')}
           </p>
 
           <ul className="mt-4 flex flex-wrap gap-2">
             {[
-              'Eight steps, autosaved',
-              'Flags vendor naming before publication',
-              'Carries gate 0 and gate 1 readiness',
+              t('deptCases.pipeline.studio.chipSteps'),
+              t('deptCases.pipeline.studio.chipVendorNaming'),
+              t('deptCases.pipeline.studio.chipGateReadiness'),
             ].map((chip) => (
               <li
                 key={chip}
@@ -56,7 +57,7 @@ function StudioLead() {
 
         <div className="shrink-0">
           <LinkButton tone="primary" to="/d/challenges/new/problem">
-            Create a challenge
+            {t('deptCases.pipeline.create')}
           </LinkButton>
         </div>
       </div>
@@ -65,6 +66,7 @@ function StudioLead() {
 }
 
 export default function ChallengePipeline() {
+  const { t } = useTranslation();
   const query = useChallenges({ scope: 'department' });
   const session = useSession();
   const navigate = useNavigate();
@@ -75,17 +77,17 @@ export default function ChallengePipeline() {
   return (
     <div>
       <PageHeader
-        title="Challenge pipeline"
-        lead="Every case this department owns, at the gate that currently holds it."
+        title={t('deptCases.pipeline.heading')}
+        lead={t('deptCases.pipeline.lead')}
         servedAt={query.data?.servedAt}
         onRefresh={() => void query.refetch()}
         aside={
-          <div className="flex items-center gap-2" role="group" aria-label="Table or board">
+          <div className="flex items-center gap-2" role="group" aria-label={t('deptCases.pipeline.viewToggle')}>
             <Button size="sm" tone={view === 'table' ? 'primary' : 'secondary'} onClick={() => setView('table')}>
-              Table
+              {t('deptCases.pipeline.viewTable')}
             </Button>
             <Button size="sm" tone={view === 'board' ? 'primary' : 'secondary'} onClick={() => setView('board')}>
-              Board
+              {t('deptCases.pipeline.viewBoard')}
             </Button>
           </div>
         }
@@ -95,15 +97,15 @@ export default function ChallengePipeline() {
 
       <QueryState
         query={query}
-        errorTitle="Unable to load the pipeline."
+        errorTitle={t('deptCases.pipeline.errorTitle')}
         loading={<TableSkeleton rows={8} columns={6} />}
         isEmpty={(d) => d.data.length === 0}
         empty={{
-          title: 'No challenges yet.',
+          title: t('deptCases.pipeline.emptyTitle'),
           body: mayCreate
-            ? 'Start with the problem you would fix tomorrow if you could. The studio turns it into something a startup can be paid to solve.'
-            : 'Nothing has been framed yet. A department nodal officer or administrator opens the first case in the challenge studio.',
-          action: mayCreate ? { label: 'Create a challenge', to: '/d/challenges/new/problem' } : undefined,
+            ? t('deptCases.pipeline.emptyBodyAuthor')
+            : t('deptCases.pipeline.emptyBodyReader'),
+          action: mayCreate ? { label: t('deptCases.pipeline.create'), to: '/d/challenges/new/problem' } : undefined,
         }}
       >
         {(payload) => {
@@ -114,14 +116,11 @@ export default function ChallengePipeline() {
               <div>
                 {dragNote ? (
                   <div className="mb-4">
-                    <InlineNote tone="seal" title="Cases move through gate decisions.">
-                      <p>
-                        Drag and drop cannot bypass an approval gate. Open the case and record a decision, with its
-                        preconditions and a written reason.
-                      </p>
+                    <InlineNote tone="seal" title={t('deptCases.pipeline.dragTitle')}>
+                      <p>{t('deptCases.pipeline.dragBody')}</p>
                       <div className="mt-3">
                         <Button size="sm" onClick={() => setDragNote(false)}>
-                          Understood
+                          {t('deptCases.pipeline.dragAcknowledge')}
                         </Button>
                       </div>
                     </InlineNote>
@@ -138,11 +137,13 @@ export default function ChallengePipeline() {
                             <div className="border-b border-ink px-3 py-2">
                               <p className="text-data text-ink">{g.id}</p>
                               <p className="text-micro text-ink-soft">{g.name}</p>
-                              <p className="mt-1 text-micro text-ink-soft tnum">{countOf(column.length, 'case')}</p>
+                              <p className="mt-1 text-micro text-ink-soft tnum">
+                                {t('deptCases.pipeline.caseCount', { count: column.length })}
+                              </p>
                             </div>
                             <ul>
                               {column.length === 0 ? (
-                                <li className="px-3 py-6 text-micro text-ink-soft">Nothing at this gate.</li>
+                                <li className="px-3 py-6 text-micro text-ink-soft">{t('deptCases.pipeline.gateEmpty')}</li>
                               ) : (
                                 column.map((c) => (
                                   <li key={c.id} className="ledger-row">
@@ -161,7 +162,10 @@ export default function ChallengePipeline() {
                                         <p className="type-register text-micro text-ink-soft">{c.caseId}</p>
                                         <p className="mt-0.5 text-body text-ink">{c.title}</p>
                                         <p className="mt-1 text-micro text-ink-soft">
-                                          Held {daysBetween(c.gateEnteredOn)} days · {c.applicantCount} applicants
+                                          {t('deptCases.pipeline.heldAndApplicants', {
+                                            days: daysBetween(c.gateEnteredOn),
+                                            applicants: c.applicantCount,
+                                          })}
                                         </p>
                                         <div className="mt-2">
                                           <SlaClock startedOn={c.gateEnteredOn} limitDays={gateSlaDays(c.currentGate)} />
@@ -187,21 +191,22 @@ export default function ChallengePipeline() {
 
           return (
             <LedgerTable
-              caption="Challenges owned by this department"
+              title={t('deptCases.pipeline.tableTitle')}
+              caption={t('deptCases.pipeline.tableCaption')}
               exportName="prayog-challenge-pipeline"
               rows={rows}
               rowKey={(c) => c.id}
               rowTone={(c) => (c.blocked ? 'seal' : c.waiver ? 'hold' : undefined)}
               onRowOpen={(c) => navigate(`/d/challenges/${c.id}`)}
               savedViews={[
-                { id: 'blocked', label: 'Blocked cases only', hiddenColumns: [], sortKey: 'dwell', sortDirection: 'desc' },
-                { id: 'money', label: 'By money at stake', hiddenColumns: ['owner'], sortKey: 'budget', sortDirection: 'desc' },
-                { id: 'closing', label: 'Closing soonest', hiddenColumns: [], sortKey: 'closes', sortDirection: 'asc' },
+                { id: 'blocked', label: t('deptCases.pipeline.views.blocked'), hiddenColumns: [], sortKey: 'dwell', sortDirection: 'desc' },
+                { id: 'money', label: t('deptCases.pipeline.views.money'), hiddenColumns: ['owner'], sortKey: 'budget', sortDirection: 'desc' },
+                { id: 'closing', label: t('deptCases.pipeline.views.closing'), hiddenColumns: [], sortKey: 'closes', sortDirection: 'asc' },
               ]}
               columns={[
                 {
                   key: 'case',
-                  header: 'Case',
+                  header: t('deptCases.pipeline.col.case'),
                   width: '26%',
                   sortValue: (c) => c.caseId,
                   filterValue: (c) => `${c.caseId} ${c.title}`,
@@ -217,7 +222,7 @@ export default function ChallengePipeline() {
                 },
                 {
                   key: 'gate',
-                  header: 'Gate',
+                  header: t('deptCases.pipeline.col.gate'),
                   sortValue: (c) => c.currentGate,
                   filterValue: (c) => c.currentGate,
                   render: (c) => (
@@ -231,20 +236,20 @@ export default function ChallengePipeline() {
                 },
                 {
                   key: 'status',
-                  header: 'Status',
+                  header: t('deptCases.pipeline.col.status'),
                   sortValue: (c) => c.status,
                   filterValue: (c) => c.status,
                   render: (c) => (
                     <span className="flex flex-col items-start gap-1">
                       <StatusBadge status={c.status} />
-                      {c.blocked ? <Badge tone="seal">Blocked</Badge> : null}
-                      {c.waiver ? <Badge tone="hold">Waiver requested</Badge> : null}
+                      {c.blocked ? <Badge tone="seal">{t('deptCases.pipeline.blocked')}</Badge> : null}
+                      {c.waiver ? <Badge tone="hold">{t('deptCases.pipeline.waiverRequested')}</Badge> : null}
                     </span>
                   ),
                 },
                 {
                   key: 'dwell',
-                  header: 'Held for',
+                  header: t('deptCases.pipeline.col.heldFor'),
                   align: 'right',
                   sortValue: (c) => daysBetween(c.gateEnteredOn),
                   filterValue: (c) => String(daysBetween(c.gateEnteredOn)),
@@ -252,14 +257,14 @@ export default function ChallengePipeline() {
                 },
                 {
                   key: 'applicants',
-                  header: 'Applicants',
+                  header: t('deptCases.pipeline.col.applicants'),
                   align: 'right',
                   sortValue: (c) => c.applicantCount,
                   render: (c) => c.applicantCount,
                 },
                 {
                   key: 'budget',
-                  header: 'Pilot budget',
+                  header: t('deptCases.pipeline.col.pilotBudget'),
                   unit: '₹',
                   align: 'right',
                   sortValue: (c) => c.pilot.budgetPaise,
@@ -268,14 +273,14 @@ export default function ChallengePipeline() {
                 },
                 {
                   key: 'owner',
-                  header: 'Owner',
+                  header: t('deptCases.pipeline.col.owner'),
                   optional: true,
                   filterValue: (c) => c.ownerId,
                   render: (c) => <span className="text-micro text-ink-soft">{c.ownerId}</span>,
                 },
                 {
                   key: 'closes',
-                  header: 'Closes',
+                  header: t('deptCases.pipeline.col.closes'),
                   align: 'right',
                   optional: true,
                   sortValue: (c) => c.timeline.closesOn ?? '9999',
@@ -283,9 +288,16 @@ export default function ChallengePipeline() {
                 },
               ]}
               totalRow={
-                <span className="flex items-baseline justify-between">
-                  <span className="text-body text-ink">Committed across {rows.length} cases</span>
-                  <span className="text-data text-ink tnum">
+                <span className="flex flex-wrap items-end justify-between gap-4">
+                  <span className="min-w-0">
+                    <span className="field-label block !text-saffron-ink">
+                      {t('deptCases.pipeline.committed', { count: rows.length })}
+                    </span>
+                    <span className="mt-1 block text-micro text-ink-soft">
+                      {t('deptCases.pipeline.committedNote')}
+                    </span>
+                  </span>
+                  <span className="tnum shrink-0 font-display text-figure text-ink">
                     {money(rows.reduce((s, c) => s + c.pilot.budgetPaise, 0))}
                   </span>
                 </span>

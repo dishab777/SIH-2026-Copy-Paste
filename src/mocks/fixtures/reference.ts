@@ -2,6 +2,14 @@
 
 export const STATES = ['Maharashtra', 'Karnataka', 'Rajasthan'] as const;
 
+/** The statutory forms an applicant entity can take, with the labels people use. */
+export const ENTITY_TYPES: readonly { value: 'private_limited' | 'llp' | 'partnership' | 'proprietorship'; label: string }[] = [
+  { value: 'private_limited', label: 'Private limited company' },
+  { value: 'llp', label: 'Limited liability partnership' },
+  { value: 'partnership', label: 'Registered partnership' },
+  { value: 'proprietorship', label: 'Sole proprietorship' },
+];
+
 export const DISTRICTS: Record<string, string[]> = {
   Maharashtra: ['Pune', 'Nagpur', 'Nashik', 'Thane', 'Aurangabad', 'Solapur'],
   Karnataka: ['Bengaluru Urban', 'Mysuru', 'Belagavi', 'Hubballi-Dharwad', 'Kalaburagi'],

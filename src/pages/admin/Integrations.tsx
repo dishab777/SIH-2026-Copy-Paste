@@ -40,6 +40,7 @@ export default function AdminIntegrations() {
         {(payload) => (
           <LedgerTable
             caption="Integration health"
+            pageSize={12}
             exportName="prayog-integrations"
             rows={payload.data}
             rowKey={(i) => i.id}

@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
+import { useSay } from '@/lib/contentText';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { CardCarousel } from '@/components/patterns/CardCarousel';
 import { STAGES } from '@/config/stages';
 import { useChallenges, useResults, useTransparency } from '@/services/hooks';
 import { QueryState, WidgetBoundary } from '@/components/layout/QueryState';
@@ -27,6 +30,8 @@ function Eyebrow({ children, tone = 'deep' }: { children: ReactNode; tone?: 'dee
 /* ------------------------------------------------------------------ page */
 
 export default function DemandBoard() {
+  const say = useSay();
+  const { t } = useTranslation();
   const stats = useTransparency();
   const challenges = useChallenges({ view: 'public', status: ['open', 'closing_soon'], sort: 'closing' });
   const results = useResults();
@@ -49,39 +54,35 @@ export default function DemandBoard() {
       <section className="deep deep-field full-bleed px-4 pb-16 pt-12 md:px-6 lg:pt-16">
         <div className="mx-auto grid max-w-shell grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
           <div>
-            <Eyebrow>From challenge to contract</Eyebrow>
+            <Eyebrow>{t('pubStatic.demand.heroEyebrow')}</Eyebrow>
             <h1 className="max-w-hero font-display text-mega tracking-mega text-deep-ink">
-              Government
-              <span className="block text-saffron">problems,</span>
-              priced and open.
+              {t('pubStatic.demand.heroTitleLead')}
+              <span className="block text-saffron">{t('pubStatic.demand.heroTitleAccent')}</span>
+              {t('pubStatic.demand.heroTitleTail')}
             </h1>
-            <p className="mt-6 max-w-[52ch] text-lead text-deep-dim">
-              Every problem here carries a measured baseline, a budget head and the scoring rubric it will be judged
-              against. You can read all of it — including exactly how you will be marked — before deciding to spend a
-              week on an application.
-            </p>
+            <p className="mt-6 max-w-[52ch] text-lead text-deep-dim">{t('pubStatic.demand.heroLead')}</p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                to="/challenges"
+              <a
+                href="#demand-heading"
                 className="press inline-flex h-12 items-center rounded-pill bg-saffron px-6 text-body font-semibold text-deep no-underline shadow-saffron"
               >
-                Browse open problems
-              </Link>
+                {t('pubStatic.demand.browseOpen')}
+              </a>
               <Link
                 to="/how-it-works"
                 className="swift inline-flex h-12 items-center rounded-pill border border-deep-rule px-6 text-body text-deep-ink no-underline hover:border-saffron hover:text-saffron"
               >
-                How the seven gates work
+                {t('pubStatic.demand.gatesLink')}
               </Link>
             </div>
 
             {h ? (
               <dl className="mt-10 grid max-w-[540px] grid-cols-3 gap-px overflow-hidden rounded-block border border-deep-rule bg-deep-rule">
                 {[
-                  { k: 'Departments', v: num(h.departments), c: 'text-deep-ink' },
-                  { k: 'Open now', v: num(h.openProblems), c: 'text-saffron' },
-                  { k: 'Committed', v: moneyScaled(h.committedPaise), c: 'text-signal' },
+                  { k: t('pubStatic.demand.statDepartments'), v: num(h.departments), c: 'text-deep-ink' },
+                  { k: t('pubStatic.demand.statOpenNow'), v: num(h.openProblems), c: 'text-saffron' },
+                  { k: t('pubStatic.demand.statCommitted'), v: moneyScaled(h.committedPaise), c: 'text-signal' },
                 ].map((s) => (
                   <div key={s.k} className="bg-deep-2 px-4 py-4">
                     <dt className="field-label !text-deep-dim">{s.k}</dt>
@@ -109,17 +110,17 @@ export default function DemandBoard() {
       {/* ============================================== 3. the featured case */}
       <section aria-labelledby="notice-heading" className="full-bleed bg-sheet px-4 py-16 md:px-6">
         <div className="mx-auto max-w-shell">
-          <Eyebrow tone="paper">Closing soonest</Eyebrow>
+          <Eyebrow tone="paper">{t('pubStatic.demand.closingSoonest')}</Eyebrow>
           <WidgetBoundary label="the featured challenge">
             <QueryState
               query={challenges}
-              errorTitle="Unable to load open challenges."
+              errorTitle={t('pubStatic.demand.challengesErrorTitle')}
               loading={<div className="h-[300px] rounded-block bg-ledger" />}
               isEmpty={(d) => d.data.length === 0}
               empty={{
-                title: 'No problems are open for applications today.',
-                body: 'Departments post here the moment a challenge clears gate 1. Until then the published results are the honest picture of what this programme has bought.',
-                action: { label: 'See published results', to: '/results' },
+                title: t('pubStatic.demand.featuredEmptyTitle'),
+                body: t('pubStatic.demand.featuredEmptyBody'),
+                action: { label: t('pubStatic.demand.seeResults'), to: '/results' },
               }}
             >
               {() => (notice ? <FeaturedNotice notice={notice} headingId="notice-heading" /> : <span />)}
@@ -133,9 +134,9 @@ export default function DemandBoard() {
         <div className="mx-auto max-w-shell">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <Eyebrow tone="paper">The demand board</Eyebrow>
+              <Eyebrow tone="paper">{t('pubStatic.demand.boardEyebrow')}</Eyebrow>
               <h2 id="demand-heading" className="font-display text-hero text-ink">
-                What departments need right now
+                {t('pubStatic.demand.boardHeading')}
               </h2>
             </div>
           </div>
@@ -143,13 +144,13 @@ export default function DemandBoard() {
           <WidgetBoundary label="the demand board">
             <QueryState
               query={challenges}
-              errorTitle="Unable to load open challenges."
+              errorTitle={t('pubStatic.demand.challengesErrorTitle')}
               loading={<TableSkeleton rows={6} columns={4} />}
               isEmpty={(d) => d.data.length === 0}
               empty={{
-                title: 'No challenges are open right now.',
-                body: 'Departments publish here as soon as gate 1 clears. Closed challenges and their outcomes stay on the results page.',
-                action: { label: 'See published results', to: '/results' },
+                title: t('pubStatic.demand.boardEmptyTitle'),
+                body: t('pubStatic.demand.boardEmptyBody'),
+                action: { label: t('pubStatic.demand.seeResults'), to: '/results' },
               }}
             >
               {() => (
@@ -171,58 +172,99 @@ export default function DemandBoard() {
       */}
       <section aria-labelledby="stages-heading" className="deep full-bleed bg-deep px-4 py-16 md:px-6">
         <div className="mx-auto max-w-shell">
-          <Eyebrow>Nine stages, no shortcuts</Eyebrow>
+          <Eyebrow>{t('pubStatic.demand.stagesEyebrow')}</Eyebrow>
           <h2 id="stages-heading" className="max-w-[16ch] font-display text-hero text-deep-ink">
-            A problem becomes a contract in the open.
+            {t('pubStatic.demand.stagesHeading')}
           </h2>
-          <p className="mt-4 max-w-[58ch] text-body text-deep-dim">
-            Nothing here happens in a meeting nobody minuted. Each stage hands the case to a named role, and the gate
-            between two stages is a written decision anyone can read afterwards.
-          </p>
+          <p className="mt-4 max-w-[58ch] text-body text-deep-dim">{t('pubStatic.demand.stagesLead')}</p>
 
-          {/* One accent across all nine. The stages are a sequence, not nine
-              categories, and colouring them differently implied a difference
-              between them that does not exist. */}
-          <ol className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {STAGES.map((s, i) => (
-              <li key={s.id} className="reveal slab settle p-6 hover:-translate-y-1" data-delay={String((i % 5) + 1)} data-accent="signal">
-                <div className="flex flex-wrap items-baseline gap-3">
-                  <span className="type-register text-figure text-signal">{String(s.index).padStart(2, '0')}</span>
-                  <h3 className="min-w-0 font-display text-h3 text-deep-ink">{s.title}</h3>
-                </div>
-                <p className="mt-3 text-body text-deep-dim">{s.department.happens}</p>
-                <p className="field-label mt-4 !text-deep-dim">
-                  {s.actor} · clears {s.gate}
-                </p>
-              </li>
-            ))}
-          </ol>
+          {/*
+            One accent across all nine. The stages are a sequence, not nine
+            categories, and colouring them differently implied a difference
+            between them that does not exist.
+
+            Read one at a time, with the one behind and the one ahead left on
+            screen — which is the whole claim of the section, and something a
+            grid of nine equal blocks could not make.
+          */}
+          <div className="mt-10">
+            <CardCarousel
+              items={STAGES}
+              itemKey={(stage) => stage.id}
+              unit="Stage"
+              label={t('pubStatic.demand.stagesCarouselLabel')}
+              render={(stage, _i, live) => (
+                <article className="slab flex h-full flex-col overflow-hidden" data-accent={live ? 'saffron' : 'signal'}>
+                  <span aria-hidden className="carousel-rail block w-full" />
+                  <div className="flex flex-1 flex-col px-6 py-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <span
+                        aria-hidden
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sheet border border-deep-rule bg-deep-2 text-saffron"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          focusable="false"
+                        >
+                          <path d="M12 6.5V12l3.5 2M12 3.6a8.4 8.4 0 1 0 0 16.8 8.4 8.4 0 0 0 0-16.8Z" />
+                        </svg>
+                      </span>
+                      {/* The stage number as a watermark. On the dead rule it
+                          measured 1.45 : 1 and was simply not there; the card
+                          beside the live one is already at 40% opacity, so it
+                          recedes without needing to be invisible up close. */}
+                      <span aria-hidden className="type-register text-mega text-deep-dim">
+                        {String(stage.index).padStart(2, '0')}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-4 font-display text-h2 text-deep-ink">
+                      <span className="sr-only">{t('pubStatic.demand.srStage', { index: stage.index })} </span>
+                      {say(stage.title)}
+                    </h3>
+                    <p className="mt-3 text-body text-deep-dim">{stage.department.happens}</p>
+
+                    <p className="field-label mt-auto pt-6 !text-deep-dim">
+                      {t('pubStatic.demand.stageActorGate', { actor: say(stage.actor), gate: stage.gate })}
+                    </p>
+                  </div>
+                </article>
+              )}
+            />
+          </div>
         </div>
       </section>
 
       {/* ============================================== 6. the proof */}
       <section aria-labelledby="proof-heading" className="full-bleed border-t border-rule bg-sheet px-4 py-16 md:px-6">
         <div className="mx-auto max-w-shell">
-          <Eyebrow tone="paper">Published outcomes</Eyebrow>
+          <Eyebrow tone="paper">{t('pubStatic.demand.proofEyebrow')}</Eyebrow>
           <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
             <h2 id="proof-heading" className="max-w-[18ch] font-display text-hero text-ink">
-              Every pilot is published, whether or not it worked.
+              {t('pubStatic.demand.proofHeading')}
             </h2>
             <Link to="/results" className="text-label text-ink underline underline-offset-4 hover:text-verify">
-              Read every result
+              {t('pubStatic.demand.readEveryResult')}
             </Link>
           </div>
 
           <WidgetBoundary label="the published results">
             <QueryState
               query={results}
-              errorTitle="Unable to load published results."
+              errorTitle={t('pubStatic.demand.resultsErrorTitle')}
               loading={<StatSkeleton rows={4} />}
               isEmpty={(d) => d.data.length === 0}
               empty={{
-                title: 'No pilots have finished yet.',
-                body: 'An outcome appears here as soon as an independent validator signs a report, whether or not the pilot succeeded.',
-                action: { label: 'See open challenges', to: '/challenges' },
+                title: t('pubStatic.demand.proofEmptyTitle'),
+                body: t('pubStatic.demand.proofEmptyBody'),
+                action: { label: t('pubStatic.demand.seeOpenChallenges'), to: '/challenges' },
               }}
             >
               {(payload) => <ProofWall rows={payload.data} />}
@@ -242,26 +284,22 @@ export default function DemandBoard() {
         <div className="mx-auto grid max-w-shell grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div>
             <h2 className="max-w-[20ch] font-display text-hero text-deep-ink">
-              Prior turnover is relaxed. The quality bar is not.
+              {t('pubStatic.demand.reliefHeading')}
             </h2>
-            <p className="mt-4 max-w-[56ch] text-body text-deep-dim">
-              A recognised startup can be excused prior turnover and prior experience. Technical capability, security,
-              safety and performance are never relaxed for anyone — and the rule that was applied to you is named on
-              your result.
-            </p>
+            <p className="mt-4 max-w-[56ch] text-body text-deep-dim">{t('pubStatic.demand.reliefLead')}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              to="/register/startup"
+              to="/register"
               className="press inline-flex h-12 items-center rounded-pill bg-signal px-6 text-body font-semibold text-deep no-underline shadow-signal"
             >
-              Register a startup
+              {t('pubStatic.demand.createAccount')}
             </Link>
             <Link
-              to="/transparency"
+              to="/how-it-works"
               className="swift inline-flex h-12 items-center rounded-pill border border-deep-rule px-6 text-body text-deep-ink no-underline hover:border-saffron hover:text-saffron"
             >
-              Programme transparency
+              {t('pubStatic.demand.gatesLink')}
             </Link>
           </div>
         </div>
@@ -273,6 +311,7 @@ export default function DemandBoard() {
 /* ------------------------------------------------------- featured notice */
 
 function FeaturedNotice({ notice, headingId }: { notice: Challenge; headingId: string }) {
+  const { t } = useTranslation();
   return (
     <article className="overflow-hidden rounded-block border border-rule bg-sheet shadow-lift">
       <div
@@ -294,8 +333,7 @@ function FeaturedNotice({ notice, headingId }: { notice: Challenge; headingId: s
           </h2>
 
           <p className="mt-4 max-w-doc text-body text-ink-soft">
-            {notice.district}, {notice.state}. The department has stated the outcome it needs and left the method open.
-            How you get there is your proposal to make.
+            {t('pubStatic.demand.noticeLead', { district: notice.district, state: notice.state })}
           </p>
 
           <ul className="mt-6 flex flex-wrap gap-2">
@@ -311,16 +349,18 @@ function FeaturedNotice({ notice, headingId }: { notice: Challenge; headingId: s
               to={`/challenges/${notice.slug}`}
               className="press inline-flex h-11 items-center rounded-pill bg-ink px-6 text-body font-medium text-sheet no-underline"
             >
-              Read this challenge
+              {t('pubStatic.demand.readChallenge')}
             </Link>
-            {notice.eligibility.relaxationsAvailable ? <Badge tone="verify">Startup relief available</Badge> : null}
+            {notice.eligibility.relaxationsAvailable ? (
+              <Badge tone="verify">{t('pubStatic.demand.startupRelief')}</Badge>
+            ) : null}
           </div>
         </div>
 
         {/* The three things a founder decides on, in the order they decide them. */}
         <dl className="border-t border-rule bg-ledger lg:border-l lg:border-t-0">
           <div className="border-b border-rule px-6 py-5">
-            <dt className="field-label">Measured on</dt>
+            <dt className="field-label">{t('pubStatic.demand.measuredOn')}</dt>
             <dd className="mt-1 text-body text-ink">{notice.baseline.metric}</dd>
             <dd className="mt-2 flex flex-wrap items-baseline gap-2 font-display text-figure text-ink tnum">
               {num(notice.baseline.currentValue, 1)}
@@ -332,14 +372,16 @@ function FeaturedNotice({ notice, headingId }: { notice: Challenge; headingId: s
             </dd>
           </div>
           <div className="border-b border-rule px-6 py-5">
-            <dt className="field-label">Pilot budget</dt>
+            <dt className="field-label">{t('pubStatic.demand.pilotBudget')}</dt>
             <dd className="mt-1 font-display text-figure text-ink tnum">
               {money(notice.pilot.budgetPaise)}
             </dd>
-            <dd className="mt-1 text-micro text-ink-soft">over {notice.pilot.durationDays} days</dd>
+            <dd className="mt-1 text-micro text-ink-soft">
+              {t('pubStatic.demand.overDays', { count: notice.pilot.durationDays })}
+            </dd>
           </div>
           <div className="px-6 py-5">
-            <dt className="field-label">Applications close</dt>
+            <dt className="field-label">{t('pubStatic.demand.applicationsClose')}</dt>
             <dd className="mt-2">
               {notice.timeline.closesOn && notice.timeline.publishedOn ? (
                 <SlaClock
@@ -351,7 +393,9 @@ function FeaturedNotice({ notice, headingId }: { notice: Challenge; headingId: s
                 <span className="text-data text-ink">—</span>
               )}
             </dd>
-            <dd className="mt-2 text-micro text-ink-soft tnum">{notice.applicantCount} have applied so far</dd>
+            <dd className="mt-2 text-micro text-ink-soft tnum">
+              {t('pubStatic.demand.appliedSoFar', { count: notice.applicantCount })}
+            </dd>
           </div>
         </dl>
       </div>
@@ -361,10 +405,17 @@ function FeaturedNotice({ notice, headingId }: { notice: Challenge; headingId: s
 
 /* -------------------------------------------------------------- the proof */
 
+/*
+ * What this page is entitled to.
+ *
+ * Signed out, /api/results answers with the outcome and an id and nothing else
+ * — the projection is decided on the server, not here. This type used to
+ * declare the company and the challenge title as well, which it never read;
+ * a type that claims more than the payload carries is how identifying data
+ * ends up on a public page by accident.
+ */
 interface ResultRow {
-  pilot: { id: string; caseId: string; title: string };
-  challenge: { title: string };
-  startup: { tradeName: string };
+  id: string;
   outcome?: string | null;
 }
 
@@ -376,27 +427,28 @@ interface ResultRow {
  * carries the same numbers in words, so the answer survives without colour.
  */
 function ProofWall({ rows }: { rows: readonly ResultRow[] }) {
+  const { t } = useTranslation();
   const count = (key: string): number => rows.filter((r) => (r.outcome ?? 'not_validated') === key).length;
 
   const slices = [
     {
       key: 'validated' as const,
-      label: 'Reproduced',
-      detail: 'An independent validator re-derived the claim from the department’s own records and got the same answer.',
+      label: t('pubStatic.demand.outcomeReproduced'),
+      detail: t('pubStatic.demand.outcomeReproducedDetail'),
       count: count('validated'),
       colour: 'var(--verify)',
     },
     {
       key: 'validated_with_qualifications' as const,
-      label: 'Reproduced with qualifications',
-      detail: 'The outcome held, but the validator recorded a caveat on the record — usually a gap in the measurement.',
+      label: t('pubStatic.demand.outcomeQualified'),
+      detail: t('pubStatic.demand.outcomeQualifiedDetail'),
       count: count('validated_with_qualifications'),
       colour: 'var(--hold)',
     },
     {
       key: 'not_validated' as const,
-      label: 'Not reproduced',
-      detail: 'The claim could not be reproduced. It stays published, because the next department is entitled to know.',
+      label: t('pubStatic.demand.outcomeNotReproduced'),
+      detail: t('pubStatic.demand.outcomeNotReproducedDetail'),
       count: count('not_validated'),
       colour: 'var(--seal)',
     },

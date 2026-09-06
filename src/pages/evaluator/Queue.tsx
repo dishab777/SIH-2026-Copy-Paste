@@ -73,6 +73,7 @@ export default function EvaluatorQueue() {
 
               <LedgerTable
                 caption="Applications assigned to you"
+                pageSize={10}
                 exportName="prayog-evaluator-queue"
                 rows={payload.data}
                 rowKey={(i) => i.applicationId}

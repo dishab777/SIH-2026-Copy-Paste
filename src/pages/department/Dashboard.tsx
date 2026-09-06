@@ -565,11 +565,14 @@ export default function DepartmentDashboard() {
                   <h2 id="payment-heading" className="font-display text-h2 text-ink">
                     Payment risk
                   </h2>
+                  {/* This is the way out of the summary and into the ledger
+                      where the money is actually approved, so it is sized like
+                      a control rather than like a caption. */}
                   <Link
                     to="/d/payments"
-                    className="inline-flex items-center gap-2 rounded-pill border border-rule bg-sheet px-4 py-1.5 text-label text-ink no-underline shadow-sheet press hover:border-verify hover:text-verify"
+                    className="btn-primary press inline-flex h-11 items-center gap-2.5 rounded-pill px-6 text-body font-semibold text-white no-underline"
                   >
-                    <Icon name="receipt" size={15} />
+                    <Icon name="receipt" size={18} />
                     Open the payment ledger
                   </Link>
                 </div>

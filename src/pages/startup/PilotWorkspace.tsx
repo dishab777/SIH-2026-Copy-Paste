@@ -10,13 +10,13 @@ import { FileCover } from '@/components/domain/FileCover';
 import { MilestoneCard, MilestoneTimeline, EvidenceVault } from '@/components/domain/Milestones';
 import { RiskRegister, ChangeRequestList } from '@/components/domain/RiskIncident';
 import { PaymentAgeingBar } from '@/components/domain/SlaClock';
-import { MeasurementChart } from '@/components/charts/MeasurementChart';
+import { MeasurementChart, kpiStatus, progress } from '@/components/charts/MeasurementChart';
 import { DataTierBadge } from '@/components/domain/Legal';
 import { KeyValueSheet } from '@/components/ledger/Ledger';
 import { StatusBadge } from '@/components/ui/Badge';
 import { LinkButton } from '@/components/ui/Button';
 import { Breadcrumb, Tabs } from '@/components/ui/Nav';
-import { day, dayTime, daysBetween, money, countOf } from '@/lib/format';
+import { day, dayTime, daysBetween, money, moneyScaled, countOf, percent } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { PrayogApiError } from '@/services/api';
 import { useUi } from '@/store/ui';
@@ -39,6 +39,12 @@ export default function StartupPilotWorkspace() {
         const p = d.pilot;
         const elapsed = Math.min(p.durationDays, Math.max(0, daysBetween(p.startedOn)));
         const due = d.milestones.filter((m) => ['not_started', 'in_progress', 'revision_required'].includes(m.status));
+        const headline = d.kpis[0];
+        const paid = d.claims.filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.netPaise, 0);
+        const owed = d.claims.filter((c) => c.status !== 'paid').reduce((sum, c) => sum + c.netPaise, 0);
+        // 'accepted' is not a milestone status: the department approves, and the
+        // claim it raises is what later reads paid.
+        const accepted = d.milestones.filter((m) => m.status === 'approved' || m.status === 'paid').length;
 
         return (
           <div>
@@ -117,6 +123,42 @@ export default function StartupPilotWorkspace() {
                   ]}
                 />
 
+                {/* Where the pilot stands, before a tab is touched. The same
+                    ruled strip the department's screen carries — this side had
+                    nothing, which is backwards: it is the startup's money. */}
+                <section aria-label="Pilot at a glance" className="sheet-flat">
+                  <dl className="grid grid-cols-2 md:grid-cols-4">
+                    {[
+                      {
+                        label: 'Elapsed',
+                        value: `Day ${elapsed} of ${p.durationDays}`,
+                        detail: `Ends ${day(p.endsOn)}`,
+                      },
+                      {
+                        label: 'Measured outcome',
+                        value: headline ? percent(progress(headline)) : '—',
+                        detail: headline ? kpiStatus(headline) : 'No measure recorded',
+                      },
+                      {
+                        label: 'Milestones accepted',
+                        value: `${accepted} of ${d.milestones.length}`,
+                        detail: due.length > 0 ? `${due.length} due from you` : 'Nothing due from you',
+                      },
+                      {
+                        label: 'Paid to you',
+                        value: moneyScaled(paid),
+                        detail: owed > 0 ? `${moneyScaled(owed)} still owed` : 'Nothing outstanding',
+                      },
+                    ].map((cell, i) => (
+                      <div key={cell.label} className={['px-4 py-3', i < 3 ? 'border-r border-rule' : ''].join(' ')}>
+                        <dt className="text-micro text-ink-soft">{cell.label}</dt>
+                        <dd className="mt-1 text-data text-ink tnum">{cell.value}</dd>
+                        <dd className="text-micro text-ink-soft">{cell.detail}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+
                 {due.length > 0 ? (
                   <InlineNote tone="hold" title={`${countOf(due.length, 'milestone is', 'milestones are')} due from you`}>
                     Once you submit, the department has {reviewWindow} calendar days to record a finding. The clock is
@@ -138,32 +180,50 @@ export default function StartupPilotWorkspace() {
                 >
                   {tab === 'overview' ? (
                     <div className="flex flex-col gap-6">
-                      <section>
-                        <h2 className="mb-2 text-h2 text-ink">Scope</h2>
-                        <p className="max-w-doc font-doc text-doc text-ink">{p.scope}</p>
+                      <section className="sheet-flat overflow-hidden rounded-block">
+                        <header className="border-b border-ink bg-ledger px-4 py-3">
+                          <p className="field-label !text-saffron-ink">What you agreed to run</p>
+                          <h2 className="mt-0.5 font-display text-h3 text-ink">Scope</h2>
+                        </header>
+                        <p className="max-w-doc px-4 py-5 font-doc text-doc text-ink">{p.scope}</p>
                       </section>
 
-                      <section>
-                        <h2 className="mb-2 text-h2 text-ink">Success criteria</h2>
-                        <p className="mb-3 max-w-doc text-body text-ink-soft">
-                          An independent validator will report against every one of these, and the report is published
-                          whether or not the pilot succeeded.
-                        </p>
-                        <ul className="sheet-flat">
-                          {p.successCriteria.map((sc) => (
+                      <section className="sheet-flat overflow-hidden rounded-block">
+                        <header className="border-b border-ink bg-ledger px-4 py-3">
+                          <p className="field-label !text-saffron-ink">
+                            {countOf(p.successCriteria.length, 'criterion')} · checked by someone outside the department
+                          </p>
+                          <h2 className="mt-0.5 font-display text-h3 text-ink">Success criteria</h2>
+                          <p className="mt-1.5 max-w-doc text-micro text-ink-soft">
+                            An independent validator reports against every one of these, and the report is published
+                            whether or not the pilot succeeded.
+                          </p>
+                        </header>
+                        <ol>
+                          {p.successCriteria.map((sc, i) => (
                             <li key={sc} className="ledger-row flex gap-3 px-4 py-3">
-                              <span aria-hidden className="text-ink-soft">
-                                ·
+                              <span
+                                aria-hidden
+                                className="type-register mt-0.5 shrink-0 text-micro text-saffron-ink tnum"
+                              >
+                                {i + 1}.
                               </span>
                               <span className="text-body text-ink">{sc}</span>
                             </li>
                           ))}
-                        </ul>
+                        </ol>
                       </section>
 
                       {d.kpis.length > 0 ? (
-                        <section>
-                          <h2 className="mb-3 text-h2 text-ink">Where the measurement stands</h2>
+                        <section aria-labelledby="measurement-heading">
+                          <div className="mb-3">
+                            <p className="field-label !text-saffron-ink">
+                              Read by the validator from your raw records, not from this page
+                            </p>
+                            <h2 id="measurement-heading" className="mt-0.5 font-display text-h3 text-ink">
+                              Where the measurement stands
+                            </h2>
+                          </div>
                           <div className="flex flex-col gap-4">
                             {d.kpis.map((k) => (
                               <MeasurementChart key={k.id} kpi={k} />
@@ -335,10 +395,15 @@ export default function StartupPilotWorkspace() {
 
                 {/* Money is never more than one screen away. */}
                 <section aria-labelledby="money-heading">
-                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-4">
-                    <h2 id="money-heading" className="text-h2 text-ink">
-                      What you are owed on this pilot
-                    </h2>
+                  <div className="mb-3 flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                      <p className="field-label !text-saffron-ink">
+                        The clock starts the day a milestone is accepted, not the day it is invoiced
+                      </p>
+                      <h2 id="money-heading" className="mt-0.5 font-display text-h3 text-ink">
+                        What you are owed on this pilot
+                      </h2>
+                    </div>
                     <Link to="/s/payments" className="text-label text-ink-soft underline underline-offset-2 hover:text-ink">
                       Open the payment ledger
                     </Link>
@@ -390,12 +455,18 @@ export default function StartupPilotWorkspace() {
                 </section>
 
                 {d.contract ? (
-                  <p className="text-micro text-ink-soft">
-                    Contract {d.contract.templateId} {d.contract.templateVersion} ·{' '}
+                  <div className="flex flex-wrap items-center justify-between gap-4 rounded-block border border-rule bg-ledger px-4 py-4">
+                    <span className="min-w-0">
+                      <span className="field-label block">Your contract</span>
+                      <span className="mt-0.5 block text-body text-ink">
+                        {d.contract.templateId} {d.contract.templateVersion} ·{' '}
+                        {d.contract.status.replace(/_/g, ' ')}
+                      </span>
+                    </span>
                     <LinkButton size="sm" to={`/s/contracts/${d.contract.id}`}>
                       Read the clauses
                     </LinkButton>
-                  </p>
+                  </div>
                 ) : null}
               </div>
             </CaseWorkspace>

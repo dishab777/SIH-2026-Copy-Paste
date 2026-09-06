@@ -236,10 +236,10 @@ function StepRail({ steps, onNavigate }: { steps: RailStep[]; onNavigate: (slug:
   const cleared = steps.filter((s) => s.state === 'cleared').length;
 
   return (
-    <nav aria-label="Challenge progress" className="mb-8">
-      <div className="sheet panel-in relative rounded-block bg-gradient-to-br from-verify-wash to-transparent px-5 py-5 shadow-raise md:px-6 md:py-6">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
-          <div className="flex min-w-0 items-start gap-4">
+    <nav aria-label="Challenge progress">
+      <div className="sheet panel-in relative rounded-block bg-gradient-to-br from-verify-wash to-transparent px-5 py-5 shadow-raise">
+        <div className="mb-4">
+          <div className="flex items-start gap-3">
             <span
               aria-hidden
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sheet border border-rule bg-gradient-to-br from-verify-wash to-hold-wash text-verify shadow-sheet"
@@ -251,15 +251,14 @@ function StepRail({ steps, onNavigate }: { steps: RailStep[]; onNavigate: (slug:
                 <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
                 Where you are
               </p>
-              <p className="mt-1.5 max-w-doc text-body text-ink-soft">
-                Eight steps, in order. A step clears when nothing on it is still missing, and you may move between them
-                at any time — nothing is lost.
+              <p className="mt-1 font-display text-figure text-ink tnum">
+                {cleared}
+                <span className="text-body font-normal text-ink-soft"> of {steps.length} cleared</span>
               </p>
             </div>
           </div>
-          <p className="shrink-0 font-display text-figure text-ink tnum">
-            {cleared}
-            <span className="text-body font-normal text-ink-soft"> of {steps.length} cleared</span>
+          <p className="mt-3 text-micro text-ink-soft">
+            Eight steps, in order. You may move between them at any time — nothing is lost.
           </p>
         </div>
 
@@ -270,7 +269,7 @@ function StepRail({ steps, onNavigate }: { steps: RailStep[]; onNavigate: (slug:
           ))}
         </div>
 
-        <ol className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <ol className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-1">
           {steps.map((s) => {
             const t = RAIL_TONE[s.state];
             return (
@@ -701,7 +700,6 @@ export default function ChallengeStudio() {
         }
       />
 
-      <StepRail steps={railSteps} onNavigate={goto} />
 
       <WizardShell
         title="New challenge"
@@ -715,6 +713,7 @@ export default function ChallengeStudio() {
         saveError={saveError}
         onRetrySave={() => void ensureSaved()}
         onExit={() => navigate('/d/challenges')}
+        rail={<StepRail steps={railSteps} onNavigate={goto} />}
         footer={
           step === 'review' ? (
             <Button

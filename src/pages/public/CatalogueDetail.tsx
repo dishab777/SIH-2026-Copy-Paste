@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCatalogueSolution, useCreateChallenge, useSession } from '@/services/hooks';
 import { can } from '@/config/rbac';
@@ -114,13 +114,13 @@ function SectionSegments({ value, onChange }: { value: SectionId; onChange: (id:
         {SECTIONS.map((s, i) => {
           const selected = s.id === value;
           return (
-            <a
+            <button
               key={s.id}
-              href={`#${s.id}`}
-              aria-current={selected ? 'location' : undefined}
+              type="button"
+              aria-pressed={selected}
               onClick={() => onChange(s.id)}
               className={[
-                'press relative z-10 flex items-center justify-center gap-2.5 whitespace-nowrap rounded-pill px-5 py-2.5 text-label no-underline',
+                'press relative z-10 flex items-center justify-center gap-2.5 whitespace-nowrap rounded-pill px-5 py-2.5 text-label',
                 selected ? 'font-bold text-white' : 'font-medium text-ink-soft hover:text-ink',
               ].join(' ')}
             >
@@ -134,7 +134,7 @@ function SectionSegments({ value, onChange }: { value: SectionId; onChange: (id:
                 {i + 1}
               </span>
               {s.label}
-            </a>
+            </button>
           );
         })}
       </div>
@@ -161,26 +161,6 @@ export default function CatalogueDetail() {
    */
   const canAdopt = can(role, 'create', 'challenge');
 
-  /*
-   * The index follows the reading rather than the last click, so it still says
-   * where you are after you have scrolled past three panels with the keyboard.
-   */
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return undefined;
-    const nodes = SECTIONS.map((s) => document.getElementById(s.id)).filter((n): n is HTMLElement => n !== null);
-    if (nodes.length === 0) return undefined;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const topmost = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (topmost) setSection(topmost.target.id as SectionId);
-      },
-      { rootMargin: '-140px 0px -55% 0px' },
-    );
-    nodes.forEach((n) => io.observe(n));
-    return () => io.disconnect();
-  }, [query.data]);
 
   return (
     <QueryState query={query} errorTitle="Unable to load this solution." loading={<PanelSkeleton lines={8} />}>
@@ -365,7 +345,8 @@ export default function CatalogueDetail() {
 
             <SectionSegments value={section} onChange={setSection} />
 
-            <section id="measured" className="sheet mb-8 scroll-mt-24 rounded-block p-6">
+            {section === 'measured' ? (
+            <section id="measured" className="sheet panel-in mb-8 rounded-block p-6">
               <p className="field-label mb-2 flex items-center gap-2 !text-saffron-ink">
                 <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
                 The measurement
@@ -406,7 +387,10 @@ export default function CatalogueDetail() {
               ) : null}
             </section>
 
-            <section id="provenance" className="sheet mb-8 scroll-mt-24 rounded-block p-6">
+            ) : null}
+
+            {section === 'provenance' ? (
+            <section id="provenance" className="sheet panel-in mb-8 rounded-block p-6">
               <p className="field-label mb-2 flex items-center gap-2 !text-saffron-ink">
                 <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
                 Where it came from
@@ -461,7 +445,10 @@ export default function CatalogueDetail() {
               </div>
             </section>
 
-            <section id="replication" className="sheet mb-8 scroll-mt-24 rounded-block p-6">
+            ) : null}
+
+            {section === 'replication' ? (
+            <section id="replication" className="sheet panel-in mb-8 rounded-block p-6">
               <p className="field-label mb-2 flex items-center gap-2 !text-saffron-ink">
                 <span aria-hidden className="inline-block h-px w-6 bg-saffron" />
                 Taking it somewhere else
@@ -499,6 +486,8 @@ export default function CatalogueDetail() {
                 </p>
               )}
             </section>
+
+            ) : null}
 
             <Modal
               open={adopting}

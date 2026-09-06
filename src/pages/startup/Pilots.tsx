@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/layout/Shell';
 import { TableSkeleton } from '@/components/ui/Feedback';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { LinkButton } from '@/components/ui/Button';
-import { achievement, kpiStatus } from '@/components/charts/MeasurementChart';
+import { kpiStatus, progress } from '@/components/charts/MeasurementChart';
 import { day, daysBetween, money, num, percent } from '@/lib/format';
 
 export default function StartupPilots() {
@@ -76,7 +76,7 @@ export default function StartupPilots() {
                       {
                         label: 'Headline measure',
                         value: k ? `${num(k.current, 1)} ${k.unit}` : '—',
-                        detail: k ? `${kpiStatus(k)} · ${percent(achievement(k))}` : 'No measure recorded',
+                        detail: k ? `${kpiStatus(k)} · ${percent(progress(k))}` : 'No measure recorded',
                       },
                       {
                         label: 'Contract value',

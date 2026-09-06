@@ -5,6 +5,9 @@ import { GATES, gateSlaDays, type GateId } from '@/config/gates';
 import { ROLES } from '@/config/rbac';
 import { citationShort } from '@/config/policies';
 import { GateFile } from '@/components/domain/GateFile';
+import { ACT_SCENE } from '@/components/domain/ActScene';
+import { STAGE_MARK } from '@/components/domain/StageMark';
+import { SectionRail } from '@/components/patterns/SectionRail';
 import { FigureCard, MarkClock, MarkCleared, MarkHold } from '@/components/ledger/FigureCard';
 import { usePortalLink } from '@/lib/portal';
 import { useReveal } from '@/lib/reveal';
@@ -140,7 +143,6 @@ export default function HowItWorks() {
   // The toggle switches the copy in place; it does not navigate to a second page.
   const [side, setSide] = useState<'department' | 'startup'>('department');
   const link = usePortalLink();
-  useReveal([side]);
 
   /*
    * Which act the reader is currently standing in. The legend beside the run
@@ -150,6 +152,10 @@ export default function HowItWorks() {
    */
   const runRef = useRef<HTMLOListElement>(null);
   const [liveAct, setLiveAct] = useState(0);
+  /* Which gate is open. Gate 3 — award pilot — is the one people arrive
+     asking about, so it is the one that is open when they get here. */
+  const [gate, setGate] = useState<GateId>('G3');
+  useReveal([side, gate]);
 
   useEffect(() => {
     const root = runRef.current;
@@ -276,6 +282,7 @@ export default function HowItWorks() {
               {ACTS.map((a, i) => {
                 const gates = gatesOfAct(a);
                 const [min, max] = daysOfAct(a);
+                const Scene = ACT_SCENE[i] ?? ACT_SCENE[0];
                 return (
                   <li key={a.key}>
                     <a
@@ -283,12 +290,12 @@ export default function HowItWorks() {
                       data-live={String(i === liveAct)}
                       className="act-card block h-full px-5 py-5 no-underline"
                     >
-                      <span
-                        aria-hidden
-                        className="mb-4 flex h-10 w-10 items-center justify-center rounded-control border border-rule bg-ledger"
-                        style={{ color: a.ink }}
-                      >
-                        <Glyph d={a.glyph} />
+                      {/* The act, drawn. A process is easier to believe when
+                          you can see somebody doing it, and each scene draws
+                          the artefact that act actually produces — a measured
+                          baseline, a scored rubric, a countersigned seal. */}
+                      <span className="mb-4 block overflow-hidden rounded-sheet border border-rule bg-sheet">
+                        <Scene />
                       </span>
                       <span className="field-label block">
                         Act {i + 1} of {ACTS.length}
@@ -315,6 +322,7 @@ export default function HowItWorks() {
                 // the bar is drawn after the last stage that clears it.
                 const closes = STAGES[i + 1]?.gate !== s.gate;
                 const g = GATES.find((x) => x.id === gateId);
+                const StageDrawing = STAGE_MARK[i] ?? STAGE_MARK[0]!;
                 return (
                   <li key={s.id} data-act={String(actOf(i))} id={`stage-${s.index}`} className="scroll-mt-24">
                     <div className="reveal flex gap-4 pb-6" data-delay={String((i % 3) + 1)}>
@@ -349,6 +357,17 @@ export default function HowItWorks() {
                           </li>
                         </ul>
                       </div>
+
+                      {/* What this stage produces, drawn. The act legend put
+                          illustration down the left of the run and the right
+                          edge had none, so nine paragraphs ran unbroken. */}
+                      <span
+                        aria-hidden
+                        className="hidden w-24 shrink-0 self-start rounded-sheet border border-rule bg-sheet px-2 py-2 shadow-sheet md:block"
+                        style={{ color: act.ink }}
+                      >
+                        <StageDrawing />
+                      </span>
                     </div>
 
                     {closes && g ? (
@@ -361,7 +380,8 @@ export default function HowItWorks() {
                           {g.id}
                         </span>
                         <a
-                          href={`#gate-${g.id}`}
+                          href="#gates"
+                          onClick={() => setGate(g.id)}
                           className="run-gate group min-w-0 flex-1 px-5 py-4 no-underline"
                           aria-label={`${g.id}: ${g.name}. Read the full gate.`}
                         >
@@ -423,83 +443,45 @@ export default function HowItWorks() {
             />
           </div>
 
-          {/* The chart, and beside it the table that carries the numbers the
-              chart only shows as width. Every chart in this product has one. */}
-          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
-            <div>
-              <h3 className="font-display text-h3 text-ink">Nine stages, drawn to scale</h3>
-              <p className="mt-1 text-micro text-ink-soft">
-                Each segment is one stage, at its longest typical duration. The saffron rules are the seven decisions.
-              </p>
+          {/*
+           * The chart alone. It used to sit beside a nine-row table of the same
+           * stages — the third listing of them on this page, after the spine
+           * above and the act legend beside it. The chart says the one thing
+           * the spine cannot: how long each stage is compared with the others.
+           */}
+          <div className="mt-10">
+            <h3 className="font-display text-h3 text-ink">Nine stages, drawn to scale</h3>
+            <p className="mt-1 text-micro text-ink-soft">
+              Each segment is one stage, at its longest typical duration. The saffron rules are the seven decisions.
+            </p>
 
-              <div className="mt-4">
-                <div className="span-strip" role="img" aria-label="The nine stages sized by typical duration, with the seven gate decisions marked">
-                  {STAGES.map((s) => (
-                    <span
-                      key={s.id}
-                      className="span-seg"
-                      data-gate={String(STAGES[s.index]?.gate !== s.gate)}
-                      style={{ width: `${(s.typicalDurationDays[1] / totalMax) * 100}%` }}
-                      title={`${s.title} — up to ${durationWords(s.typicalDurationDays[1])}`}
-                    />
-                  ))}
-                </div>
-                <p className="mt-2 flex items-baseline justify-between text-micro text-ink-soft tnum">
-                  <span>Day 0</span>
-                  <span>Day {num(totalMax)}</span>
-                </p>
+            <div className="mt-4">
+              <div
+                className="span-strip"
+                role="img"
+                aria-label="The nine stages sized by typical duration, with the seven gate decisions marked"
+              >
+                {STAGES.map((s) => (
+                  <span
+                    key={s.id}
+                    className="span-seg"
+                    data-gate={String(STAGES[s.index]?.gate !== s.gate)}
+                    style={{ width: `${(s.typicalDurationDays[1] / totalMax) * 100}%` }}
+                    title={`${s.title} — up to ${durationWords(s.typicalDurationDays[1])}`}
+                  />
+                ))}
               </div>
-
-              <p className="mt-6 max-w-doc text-body text-ink-soft">
-                Discovery is the longest segment by a distance, and it is the one part of the run that is deliberately
-                slow: a challenge stays open long enough for a company that has never sold to government to find it,
-                read the rubric, and decide whether to spend a week on an application.
+              <p className="mt-2 flex items-baseline justify-between text-micro text-ink-soft tnum">
+                <span>Day 0</span>
+                <span>Day {num(totalMax)}</span>
               </p>
             </div>
 
-            <div className="sheet-flat overflow-hidden">
-              <table className="w-full text-left">
-                <caption className="sr-only">Typical duration and decision window for each of the nine stages</caption>
-                <thead>
-                  <tr className="border-b border-ink">
-                    <th scope="col" className="px-4 py-2 text-micro text-ink">
-                      Stage
-                    </th>
-                    <th scope="col" className="px-4 py-2 text-right text-micro text-ink">
-                      Typical days
-                    </th>
-                    <th scope="col" className="px-4 py-2 text-right text-micro text-ink">
-                      Gate
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {STAGES.map((s) => (
-                    <tr key={s.id} className="ledger-row border-b border-rule last:border-b-0">
-                      <td className="px-4 py-2">
-                        <span className="block text-body text-ink">
-                          {s.index}. {s.title}
-                        </span>
-                        <span className="block text-micro text-ink-soft">{s.actor}</span>
-                      </td>
-                      <td className="px-4 py-2 text-right text-data text-ink tnum">
-                        {s.typicalDurationDays[0]}&ndash;{s.typicalDurationDays[1]}
-                      </td>
-                      <td className="px-4 py-2 text-right text-data text-ink tnum">{s.gate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="rule-total">
-                    <td className="px-4 py-2 text-body text-ink">All nine stages</td>
-                    <td className="px-4 py-2 text-right text-data text-ink tnum">
-                      {totalMin}&ndash;{totalMax}
-                    </td>
-                    <td className="px-4 py-2 text-right text-data text-ink tnum">{GATES.length}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <p className="mt-6 max-w-doc text-body text-ink-soft">
+              Discovery is the longest segment by a distance, and it is the one part of the run that is deliberately
+              slow: a challenge stays open long enough for a company that has never sold to government to find it, read
+              the rubric, and decide whether to spend a week on an application.
+            </p>
           </div>
         </div>
       </section>
@@ -524,79 +506,88 @@ export default function HowItWorks() {
             it, naming who granted it and why.
           </p>
 
-          <ol className="noting mt-10">
-            {GATES.map((g, i) => (
-              <li
-                key={g.id}
-                id={`gate-${g.id}`}
-                data-ink="note"
-                className="noting-entry reveal scroll-mt-24 border-b border-rule pb-8 pt-6 first:pt-0 last:border-b-0 last:pb-0"
-                data-delay={String((i % 4) + 1)}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                  <div className="flex flex-wrap items-baseline gap-3">
-                    <span className="type-register rounded-pill border border-ink px-3 py-0.5 text-micro text-ink">
-                      {g.id}
-                    </span>
-                    <h3 className="font-display text-h2 text-ink">{g.name}</h3>
-                  </div>
-                  <p className="text-micro text-ink-soft tnum">
-                    {ownerLabel(g.ownerRole)} · {gateSlaDays(g.id)}-day window
-                  </p>
-                </div>
+          <div className="mt-10">
+            <SectionRail
+              title="The seven gates"
+              note="One at a time. All seven in full is a wall of preconditions nobody reads to the end of."
+              label="Gate decisions"
+              value={gate}
+              onChange={(id) => setGate(id as GateId)}
+              sections={GATES.map((g) => ({
+                id: g.id,
+                label: `${g.id} · ${g.name}`,
+                detail: ownerLabel(g.ownerRole),
+                count: g.preconditions.length,
+              }))}
+            >
+              {GATES.filter((g) => g.id === gate).map((g) => (
+                <article key={g.id} id={`gate-${g.id}`} className="sheet-flat overflow-hidden rounded-block scroll-mt-24">
+                  <header className="border-b border-ink bg-ledger px-5 py-5 md:px-6">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                      <div className="flex flex-wrap items-baseline gap-3">
+                        <span className="type-register rounded-pill border border-ink px-3 py-0.5 text-micro text-ink">
+                          {g.id}
+                        </span>
+                        <h3 className="font-display text-h2 text-ink">{g.name}</h3>
+                      </div>
+                      <p className="text-micro text-ink-soft tnum">
+                        {ownerLabel(g.ownerRole)} · {gateSlaDays(g.id)}-day window
+                      </p>
+                    </div>
+                    <p className="mt-3 max-w-doc font-doc text-body text-ink">{g.decides}</p>
+                  </header>
 
-                <p className="mt-3 max-w-doc font-doc text-body text-ink">{g.decides}</p>
-
-                <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                  <div>
-                    <p className="field-label">
-                      {countOf(g.preconditions.length, 'precondition')} — every one, or a recorded waiver
-                    </p>
-                    <ul className="mt-3 space-y-3">
-                      {g.preconditions.map((p) => (
-                        <li key={p.key} className="border-l-2 border-rule pl-3">
-                          <span className="block text-body text-ink">{p.label}</span>
-                          <span className="mt-0.5 block text-micro text-ink-soft">{p.detail}</span>
-                          <span className="mt-1 flex flex-wrap items-center gap-2">
-                            <span className="rounded-pill border border-rule bg-sheet px-2 py-0.5 text-micro text-ink-soft">
-                              {citationShort(p.citation)}
+                  <div className="grid grid-cols-1 gap-8 px-5 py-6 md:px-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                    <div>
+                      <p className="field-label">
+                        {countOf(g.preconditions.length, 'precondition')} — every one, or a recorded waiver
+                      </p>
+                      <ul className="mt-3 space-y-3">
+                        {g.preconditions.map((pc) => (
+                          <li key={pc.key} className="border-l-2 border-rule pl-3">
+                            <span className="block text-body text-ink">{pc.label}</span>
+                            <span className="mt-0.5 block text-micro text-ink-soft">{pc.detail}</span>
+                            <span className="mt-1 flex flex-wrap items-center gap-2">
+                              <span className="rounded-pill border border-rule bg-ledger px-2 py-0.5 text-micro text-ink-soft">
+                                {citationShort(pc.citation)}
+                              </span>
+                              <span className="text-micro text-ink-soft">{pc.fixHint}</span>
                             </span>
-                            <span className="text-micro text-ink-soft">{p.fixHint}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div>
-                    <p className="field-label">If it clears</p>
-                    <ul className="mt-3 space-y-2">
-                      {g.consequences.map((c) => (
-                        <li key={c} className="flex gap-2 text-body text-ink">
-                          <span aria-hidden className="mt-1.5 shrink-0 text-verify">
-                            <Glyph d="M4 12.5 9.5 18 20 6.5" size={12} />
-                          </span>
-                          {c}
-                        </li>
-                      ))}
-                    </ul>
+                    <div>
+                      <p className="field-label">If it clears</p>
+                      <ul className="mt-3 space-y-2">
+                        {g.consequences.map((cq) => (
+                          <li key={cq} className="flex gap-2 text-body text-ink">
+                            <span aria-hidden className="mt-1.5 shrink-0 text-verify">
+                              <Glyph d="M4 12.5 9.5 18 20 6.5" size={12} />
+                            </span>
+                            {cq}
+                          </li>
+                        ))}
+                      </ul>
 
-                    <p className="field-label mt-6">Who is told</p>
-                    <ul className="mt-2 flex flex-wrap gap-2">
-                      {g.notifies.map((n) => (
-                        <li
-                          key={n}
-                          className="rounded-pill border border-rule bg-sheet px-2.5 py-1 text-micro text-ink-soft"
-                        >
-                          {ownerLabel(n)}
-                        </li>
-                      ))}
-                    </ul>
+                      <p className="field-label mt-6">Who is told</p>
+                      <ul className="mt-2 flex flex-wrap gap-2">
+                        {g.notifies.map((n) => (
+                          <li
+                            key={n}
+                            className="rounded-pill border border-rule bg-ledger px-2.5 py-1 text-micro text-ink-soft"
+                          >
+                            {ownerLabel(n)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ol>
+                </article>
+              ))}
+            </SectionRail>
+          </div>
         </div>
       </section>
 

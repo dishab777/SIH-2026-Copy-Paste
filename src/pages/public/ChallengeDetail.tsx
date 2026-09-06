@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useChallenge, useSession, useStartApplication, useApplications } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
@@ -18,6 +19,7 @@ import { usePortalLink } from '@/lib/portal';
 import { portalFor } from '@/config/rbac';
 
 export default function ChallengeDetail() {
+  const { t } = useTranslation();
   const { slug } = useParams();
   const navigate = useNavigate();
   const query = useChallenge(slug);
@@ -30,7 +32,11 @@ export default function ChallengeDetail() {
   const role = session.data?.data.role ?? 'public';
 
   return (
-    <QueryState query={query} errorTitle="Unable to load this challenge." loading={<PanelSkeleton lines={10} />}>
+    <QueryState
+      query={query}
+      errorTitle={t('pubChallenges.detail.errorTitle')}
+      loading={<PanelSkeleton lines={10} />}
+    >
       {(payload) => {
         const { challenge: c, department, clarifications } = payload.data;
         const existing = applications.data?.data.find((a) => a.application.challengeId === c.id);
@@ -48,8 +54,8 @@ export default function ChallengeDetail() {
                 <Breadcrumb
                   tone="deep"
                   items={[
-                    { label: 'Demand board', to: '/' },
-                    { label: 'Open challenges', to: link('/challenges') },
+                    { label: t('pubChallenges.detail.breadcrumbBoard'), to: '/' },
+                    { label: t('pubChallenges.detail.breadcrumbChallenges'), to: link('/challenges') },
                     { label: c.caseId },
                   ]}
                 />
@@ -69,15 +75,17 @@ export default function ChallengeDetail() {
 
                 <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-block border border-deep-rule bg-deep-rule md:grid-cols-4">
                   <div className="bg-deep-2 px-4 py-4">
-                    <dt className="field-label !text-deep-dim">Pilot budget</dt>
+                    <dt className="field-label !text-deep-dim">{t('pubChallenges.detail.pilotBudget')}</dt>
                     <dd className="mt-1 font-display text-figure text-signal tnum">{money(c.pilot.budgetPaise)}</dd>
                   </div>
                   <div className="bg-deep-2 px-4 py-4">
-                    <dt className="field-label !text-deep-dim">Duration</dt>
-                    <dd className="mt-1 font-display text-figure text-deep-ink tnum">{c.pilot.durationDays} days</dd>
+                    <dt className="field-label !text-deep-dim">{t('pubChallenges.detail.duration')}</dt>
+                    <dd className="mt-1 font-display text-figure text-deep-ink tnum">
+                      {t('pubChallenges.detail.durationDays', { count: c.pilot.durationDays })}
+                    </dd>
                   </div>
                   <div className="bg-deep-2 px-4 py-4">
-                    <dt className="field-label !text-deep-dim">Applicants</dt>
+                    <dt className="field-label !text-deep-dim">{t('pubChallenges.detail.applicants')}</dt>
                     <dd className="mt-1 font-display text-figure text-deep-ink tnum">{c.applicantCount}</dd>
                   </div>
                   {c.timeline.closesOn && c.timeline.publishedOn ? (
@@ -85,7 +93,7 @@ export default function ChallengeDetail() {
                       {/* A clock only counts down while the window is open. A closed
                           challenge is not "overdue" — it closed, on a known date. */}
                       <dt className="field-label !text-deep-dim">
-                        {isOpen ? 'Applications close' : 'Applications closed'}
+                        {isOpen ? t('pubChallenges.detail.closes') : t('pubChallenges.detail.closed')}
                       </dt>
                       <dd className="mt-1">
                         {isOpen ? (
@@ -105,13 +113,15 @@ export default function ChallengeDetail() {
                 {role === 'startup' ? (
                   existing ? (
                     <LinkButton tone="primary" to={`/s/applications/${existing.application.id}`}>
-                      {existing.application.status === 'draft' ? 'Continue your application' : 'Open your application'}
+                      {existing.application.status === 'draft'
+                        ? t('pubChallenges.detail.continueApplication')
+                        : t('pubChallenges.detail.openApplication')}
                     </LinkButton>
                   ) : isOpen ? (
                     <Button
                       tone="primary"
                       loading={start.isPending}
-                      loadingLabel="Starting"
+                      loadingLabel={t('pubChallenges.detail.starting')}
                       onClick={() =>
                         start.mutate(c.id, {
                           onSuccess: (res) => {
@@ -120,25 +130,28 @@ export default function ChallengeDetail() {
                           },
                           onError: (err) => {
                             const api = err instanceof PrayogApiError ? err : null;
-                            pushToast('seal', api?.message ?? 'Could not start an application.', api?.details.join(' '));
+                            pushToast(
+                              'seal',
+                              api?.message ?? t('pubChallenges.detail.startFailed'),
+                              api?.details.join(' '),
+                            );
                           },
                         })
                       }
                     >
-                      Start an application
+                      {t('pubChallenges.detail.startApplication')}
                     </Button>
                   ) : (
-                    <InlineNote tone="neutral" title="Applications are closed">
-                      This challenge closed on the date in the timeline. Its outcome is published on the results page
-                      once the pilot finishes.
+                    <InlineNote tone="neutral" title={t('pubChallenges.detail.closedTitle')}>
+                      {t('pubChallenges.detail.closedBody')}
                     </InlineNote>
                   )
                 ) : role === 'public' ? (
                   <>
                     <LinkButton tone="primary" to="/register/startup">
-                      Register as a startup to apply
+                      {t('pubChallenges.detail.registerToApply')}
                     </LinkButton>
-                    <LinkButton to="/login">Sign in</LinkButton>
+                    <LinkButton to="/login">{t('pubChallenges.detail.signIn')}</LinkButton>
                   </>
                 ) : portalFor(role) === '/d' ? (
                   /*
@@ -146,7 +159,9 @@ export default function ChallengeDetail() {
                    * a validator or the programme unit following this reached
                    * the portal guard rather than a workspace.
                    */
-                  <LinkButton to={`/d/challenges/${c.id}`}>Open the departmental workspace</LinkButton>
+                  <LinkButton to={`/d/challenges/${c.id}`}>
+                    {t('pubChallenges.detail.openWorkspace')}
+                  </LinkButton>
                 ) : null}
                 </div>
               </div>

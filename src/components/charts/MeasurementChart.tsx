@@ -58,10 +58,41 @@ const Recharts = lazy(async () => {
   };
 });
 
+/**
+ * How much of the improvement the pilot was asked for has been made, as a
+ * share of it. Uncapped, and it can go negative: a pilot that made things
+ * worse has achieved less than nothing, and rounding that up to zero would
+ * hide it. Read it with `progress` or `beyondTarget`, never printed raw.
+ */
 export function achievement(kpi: Kpi): number {
   const span = Math.abs(kpi.baseline - kpi.target) || 1;
   const gained = kpi.direction === 'decrease' ? kpi.baseline - kpi.current : kpi.current - kpi.baseline;
   return (gained / span) * 100;
+}
+
+/**
+ * The same figure, as a share can actually be read: 0 to 100.
+ *
+ * This is what goes on screen beside "Target achieved". Beating a target is
+ * worth saying, but it is a separate fact from how much of the target is done,
+ * and `beyondTarget` is where it gets said.
+ */
+export function progress(kpi: Kpi): number {
+  return Math.max(0, Math.min(100, achievement(kpi)));
+}
+
+/**
+ * How far past the target the current reading sits, as a share of the target
+ * itself — 0 when the target has not been passed.
+ *
+ * Deliberately measured against the target and not against the improvement:
+ * "5% better than the target" is a claim a reader can check against the two
+ * numbers printed beside it. "111% of the targeted improvement" is not.
+ */
+export function beyondTarget(kpi: Kpi): number {
+  if (achievement(kpi) <= 100 || kpi.target === 0) return 0;
+  const past = kpi.direction === 'decrease' ? kpi.target - kpi.current : kpi.current - kpi.target;
+  return Math.max(0, (past / Math.abs(kpi.target)) * 100);
 }
 
 export function kpiStatus(kpi: Kpi): 'Target achieved' | 'On track' | 'Behind target' {
@@ -84,7 +115,8 @@ export interface MeasurementChartProps {
 export function MeasurementChart({ kpi, method, sampleNote, confounders, headingLevel = 3 }: MeasurementChartProps) {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const [view, setView] = useState<'chart' | 'table'>('chart');
-  const a = achievement(kpi);
+  const done = progress(kpi);
+  const beyond = beyondTarget(kpi);
 
   return (
     <section className="sheet-flat">
@@ -110,7 +142,10 @@ export function MeasurementChart({ kpi, method, sampleNote, confounders, heading
           { label: 'Baseline', value: `${num(kpi.baseline, 1)} ${kpi.unit}` },
           { label: 'Target', value: `${num(kpi.target, 1)} ${kpi.unit}` },
           { label: 'Current', value: `${num(kpi.current, 1)} ${kpi.unit}` },
-          { label: 'Achievement', value: percent(a) },
+          {
+            label: 'Achievement',
+            value: beyond > 0 ? `${percent(done)} · ${percent(beyond)} past target` : percent(done),
+          },
         ].map((cell, i) => (
           <div key={cell.label} className={['px-4 py-3', i < 3 ? 'border-r border-rule' : ''].join(' ')}>
             <dt className="text-micro text-ink-soft">{cell.label}</dt>

@@ -4,7 +4,7 @@ import { useMeasurement, useRecordAttribution } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
 import { PageHeader } from '@/components/layout/Shell';
 import { PanelSkeleton, InlineNote, EmptyState } from '@/components/ui/Feedback';
-import { MeasurementChart, achievement, kpiStatus } from '@/components/charts/MeasurementChart';
+import { MeasurementChart, beyondTarget, kpiStatus, progress } from '@/components/charts/MeasurementChart';
 import { KeyValueSheet } from '@/components/ledger/Ledger';
 import { Badge } from '@/components/ui/Badge';
 import { Button, LinkButton } from '@/components/ui/Button';
@@ -77,8 +77,9 @@ export default function PilotMeasurement() {
                               <span className="text-data text-ink tnum">
                                 {num(k.current, 1)} {k.unit}
                               </span>
-                              <Badge tone={achievement(k) >= 100 ? 'verify' : achievement(k) >= 70 ? 'hold' : 'seal'}>
-                                {kpiStatus(k)} · {percent(achievement(k))}
+                              <Badge tone={progress(k) >= 100 ? 'verify' : progress(k) >= 70 ? 'hold' : 'seal'}>
+                                {kpiStatus(k)} · {percent(progress(k))}
+                                {beyondTarget(k) > 0 ? ` · ${percent(beyondTarget(k))} past target` : ''}
                               </Badge>
                             </span>
                           </div>

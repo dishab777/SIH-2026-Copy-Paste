@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 export interface TabItem {
@@ -20,10 +21,11 @@ export function Tabs({
   onChange: (id: string) => void;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const base = useId();
   return (
     <div>
-      <div role="tablist" aria-label="Sections" className="flex flex-wrap items-end gap-0 border-b border-rule">
+      <div role="tablist" aria-label={t('field.nav.sections')} className="flex flex-wrap items-end gap-0 border-b border-rule">
         {items.map((item) => {
           const selected = item.id === value;
           return (
@@ -108,9 +110,10 @@ export function Breadcrumb({
   /** The ground it sits on. A crumb trail in a deep masthead takes the deep inks. */
   tone?: 'paper' | 'deep';
 }) {
+  const { t } = useTranslation();
   const deep = tone === 'deep';
   return (
-    <nav aria-label="Breadcrumb">
+    <nav aria-label={t('field.nav.breadcrumb')}>
       <ol
         className={['flex flex-wrap items-center gap-2 text-micro', deep ? 'text-deep-dim' : 'text-ink-soft'].join(' ')}
       >
@@ -150,14 +153,15 @@ export function Pagination({
   total: number;
   onChange: (page: number) => void;
 }) {
+  const { t } = useTranslation();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pages <= 1) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-between gap-4 border-t border-rule py-3">
+    <nav aria-label={t('field.nav.pagination')} className="flex items-center justify-between gap-4 border-t border-rule py-3">
       <p className="text-micro text-ink-soft tnum">
-        Showing {from} to {to} of {total}
+        {t('field.nav.showing', { from, to, total })}
       </p>
       <div className="flex items-center gap-2">
         <button
@@ -166,10 +170,10 @@ export function Pagination({
           onClick={() => onChange(page - 1)}
           className="h-8 rounded-control border border-rule px-3 text-label disabled:opacity-45"
         >
-          Previous
+          {t('field.nav.previous')}
         </button>
         <span className="text-micro text-ink-soft tnum">
-          Page {page} of {pages}
+          {t('field.nav.page', { page, pages })}
         </span>
         <button
           type="button"
@@ -177,7 +181,7 @@ export function Pagination({
           onClick={() => onChange(page + 1)}
           className="h-8 rounded-control border border-rule px-3 text-label disabled:opacity-45"
         >
-          Next
+          {t('field.nav.next')}
         </button>
       </div>
     </nav>

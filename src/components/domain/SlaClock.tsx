@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { readClock, clockMarkerClass, clockWashClass, type ClockState } from '@/lib/sla';
 import { day, money } from '@/lib/format';
 
@@ -16,6 +18,33 @@ const CLOCK_INK: Record<ClockState, string> = {
   due_soon: 'text-hold',
   overdue: 'text-seal',
 };
+
+/**
+ * The window, in words: "4 days", "3 weeks", "2 months". The buckets are the
+ * ones `durationWords` uses, so a clock reads the same length of time the same
+ * way everywhere — but the words themselves are resolved here, at the render
+ * site, because `src/lib` must stay free of the i18next singleton.
+ *
+ * `t` is passed in rather than looked up: this is not a component, so it cannot
+ * hold a hook.
+ */
+function durationPhrase(t: TFunction, days: number): string {
+  const n = Math.abs(days);
+  if (n < 14) return t('card.clock.days', { count: n });
+  if (n < 60) return t('card.clock.weeks', { count: Math.round(n / 7) });
+  return t('card.clock.months', { count: Math.round(n / 30) });
+}
+
+/**
+ * The reading, as one whole sentence. Never a stem plus a fragment: the three
+ * cases are three separate strings, and each carries its own word order so a
+ * translator can put the duration where the language wants it.
+ */
+function clockWords(t: TFunction, daysRemaining: number): string {
+  if (daysRemaining < 0) return t('card.clock.overdueBy', { duration: durationPhrase(t, daysRemaining) });
+  if (daysRemaining === 0) return t('card.clock.dueToday');
+  return t('card.clock.dueIn', { duration: durationPhrase(t, daysRemaining) });
+}
 
 /**
  * The dial. A ring drawn as one SVG arc, filled clockwise by how much of the
@@ -61,9 +90,11 @@ function Dial({ fraction, state, size = 26 }: { fraction: number; state: ClockSt
  * a glance, survives a monochrome print, and never depends on colour alone.
  */
 export function SlaClock({ startedOn, limitDays, showDetail, label, compact }: SlaClockProps) {
+  const { t } = useTranslation();
   const reading = readClock(startedOn, limitDays);
   const tone: ClockState = reading.state;
   const used = Math.max(0, reading.daysElapsed) / Math.max(1, limitDays);
+  const words = clockWords(t, reading.daysRemaining);
 
   return (
     <span
@@ -76,12 +107,11 @@ export function SlaClock({ startedOn, limitDays, showDetail, label, compact }: S
       {compact ? null : <Dial fraction={used} state={tone} />}
       <span className="inline-flex flex-col">
         <span className={['text-data font-semibold', CLOCK_INK[tone]].join(' ')}>
-          {label ? `${label} — ` : ''}
-          {reading.words}
+          {label ? t('card.clock.labelled', { label, reading: words }) : words}
         </span>
         {showDetail && !compact ? (
           <span className="text-micro text-ink-soft tnum">
-            Day {Math.max(0, reading.daysElapsed)} of {limitDays}
+            {t('card.clock.dayOfLimit', { day: Math.max(0, reading.daysElapsed), limit: limitDays })}
           </span>
         ) : null}
       </span>
@@ -110,9 +140,11 @@ export function PaymentAgeingBar({
   paidOn,
   reference,
 }: PaymentAgeingBarProps) {
+  const { t } = useTranslation();
   const reading = readClock(acceptedOn, limitDays, paidOn ? new Date(paidOn) : undefined);
   const pct = Math.max(0, Math.min(1, reading.daysElapsed / Math.max(1, limitDays)));
   const over = reading.daysRemaining < 0;
+  const words = clockWords(t, reading.daysRemaining);
 
   return (
     <div className="min-w-[220px]">
@@ -120,9 +152,9 @@ export function PaymentAgeingBar({
         <span className="inline-flex items-center gap-2.5">
           <Dial fraction={pct} state={paidOn ? 'comfortable' : reading.state} size={30} />
           <span className="text-micro text-ink-soft">
-            Accepted {day(acceptedOn)}
+            {t('card.ageing.accepted', { date: day(acceptedOn) })}
             <span className="block tnum">
-              day {Math.max(0, reading.daysElapsed)} of {limitDays}
+              {t('card.ageing.dayOfLimit', { day: Math.max(0, reading.daysElapsed), limit: limitDays })}
             </span>
           </span>
         </span>
@@ -141,8 +173,12 @@ export function PaymentAgeingBar({
         role="img"
         aria-label={
           paidOn
-            ? `Paid on ${day(paidOn)} after ${reading.daysElapsed} days`
-            : `${reading.words}, day ${Math.max(0, reading.daysElapsed)} of ${limitDays}`
+            ? t('card.ageing.paidAfter', { date: day(paidOn), count: reading.daysElapsed })
+            : t('card.ageing.ageing', {
+                reading: words,
+                day: Math.max(0, reading.daysElapsed),
+                limit: limitDays,
+              })
         }
       >
         <div
@@ -154,8 +190,12 @@ export function PaymentAgeingBar({
         />
       </div>
       <p className={['mt-2 text-micro', over && !paidOn ? 'font-semibold text-seal' : 'text-ink-soft'].join(' ')}>
-        {paidOn ? `Paid ${day(paidOn)}${reference ? ` · ${reference}` : ''}` : reading.words}
-        {deductionPaise > 0 ? ` · ${money(deductionPaise)} deducted` : ''}
+        {paidOn
+          ? reference
+            ? t('card.ageing.paidWithReference', { date: day(paidOn), reference })
+            : t('card.ageing.paid', { date: day(paidOn) })
+          : words}
+        {deductionPaise > 0 ? t('card.ageing.deducted', { amount: money(deductionPaise) }) : ''}
       </p>
     </div>
   );

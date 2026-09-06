@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { usePortalLink } from '@/lib/portal';
 import { useStartupDashboard } from '@/services/hooks';
 import { QueryState, WidgetBoundary } from '@/components/layout/QueryState';
 import { PageHeader } from '@/components/layout/Shell';
@@ -12,6 +13,7 @@ import { readClock } from '@/lib/sla';
 import { platformNow } from '@/config/clock';
 
 export default function StartupDashboard() {
+  const link = usePortalLink();
   const query = useStartupDashboard();
 
   return (
@@ -175,7 +177,7 @@ export default function StartupDashboard() {
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div className="min-w-0 max-w-doc">
                             <Link
-                              to={`/challenges/${rec.challenge.slug}`}
+                              to={link(`/challenges/${rec.challenge.slug}`)}
                               className="text-body text-ink underline underline-offset-2"
                             >
                               {rec.challenge.title}

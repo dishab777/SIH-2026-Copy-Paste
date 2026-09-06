@@ -38,7 +38,7 @@ export function CaseWorkspace({
   const [dockCollapsed, setDockCollapsed] = useState(evidence.length === 0);
 
   return (
-    <div className="flex gap-6">
+    <div className="flex items-start gap-6">
       {/* The rail floats over the working column as you scroll past it, so it
           gets the glass treatment rather than sitting on the page as a slab. */}
       <aside className="hidden w-[208px] shrink-0 xl:block">

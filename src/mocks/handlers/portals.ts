@@ -4,8 +4,9 @@ import { gateSlaDays } from '@/config/gates';
 import { policyNumber } from '@/config/policies';
 import type { Startup, WaitingItem } from '@/types/models';
 import { getDb } from '../store/db';
-import { currentUser } from '../store/session';
+import { currentRole, currentUser } from '../store/session';
 import { emptyIfScenario, fail, gate, notFound, ok, partialFailure, readBody } from './util';
+import { mayRead } from './jurisdiction';
 
 interface MatchReason {
   key: string;
@@ -467,10 +468,24 @@ export const portalHandlers = [
     });
   }),
 
+  /*
+   * Published results.
+   *
+   * A result joins a named company to a named validator to a verdict — including
+   * "not reproduced" — and to the money. That is the most identifying payload on
+   * the site, and the demand board fetches it too, to draw three counts.
+   *
+   * So the projection depends on who is asking. Signed out, the rows carry the
+   * outcome and nothing that identifies anybody: enough for the landing page's
+   * drawing, useless to anyone scraping it. The refusal happens here rather than
+   * in the component, because a component that decides what to render has
+   * already been sent the thing it decided not to show.
+   */
   http.get('/api/results', async () => {
     const blocked = await gate('read');
     if (blocked) return blocked;
     const db = getDb();
+    const anonymous = currentRole() === 'public';
     const finished = db.pilots.filter((p) =>
       ['validated', 'not_validated', 'closed_after_pilot', 'scaled'].includes(p.status),
     );
@@ -478,17 +493,21 @@ export const portalHandlers = [
       emptyIfScenario(
         finished.map((p) => {
           const validation = db.validations.find((v) => v.pilotId === p.id) ?? null;
+          const outcome = validation?.outcome ?? null;
+          if (anonymous) return { id: p.id, outcome };
+
           const kpi = db.kpis.find((k) => k.pilotId === p.id);
           const procurementCase = db.procurement.find((x) => x.pilotId === p.id) ?? null;
           const gateRecord = db.gates.find((g) => g.entityId === p.id && g.gate === 'G6');
           return {
+            id: p.id,
             pilot: p,
             challenge: db.challenges.find((c) => c.id === p.challengeId)!,
             department: db.departments.find((d) => d.id === p.departmentId)!,
             startup: db.startups.find((s) => s.id === p.startupId)!,
             claimed: kpi ? `${kpi.name}: ${kpi.baseline} → ${kpi.current} ${kpi.unit}` : '—',
             validated: validation?.publishedSummary ?? 'Validation in progress',
-            outcome: validation?.outcome ?? null,
+            outcome,
             validator: db.users.find((u) => u.id === validation?.validatorId)?.name ?? null,
             finalDecision: gateRecord?.decision ?? null,
             pathway: procurementCase?.pathwayId ?? null,
@@ -633,21 +652,31 @@ export const portalHandlers = [
     const q = (new URL(request.url).searchParams.get('q') ?? '').toLowerCase().trim();
     if (!q) return ok({ challenges: [], startups: [], pilots: [], applications: [] });
     const match = (s: string): boolean => s.toLowerCase().includes(q);
+    /*
+     * Search is a list of links, and a link to a case the reader cannot open is
+     * worse than no link: it tells them the case exists, what it is called and
+     * which district it is in. Every result goes through the same jurisdiction
+     * check the case itself would.
+     */
     return ok({
       challenges: db.challenges
         .filter((c) => match(c.title) || match(c.caseId) || match(c.sector))
+        .filter((c) => mayRead('challenges', c.id))
         .slice(0, 6)
         .map((c) => ({ id: c.id, slug: c.slug, caseId: c.caseId, title: c.title, subtitle: c.sector, gate: c.currentGate })),
       startups: db.startups
         .filter((s) => match(s.tradeName) || match(s.legalName) || s.capabilities.some(match))
+        .filter((s) => mayRead('startups', s.id))
         .slice(0, 6)
         .map((s) => ({ id: s.id, slug: s.slug, title: s.tradeName, subtitle: s.capabilities.slice(0, 2).join(', ') })),
       pilots: db.pilots
         .filter((p) => match(p.title) || match(p.caseId))
+        .filter((p) => mayRead('pilots', p.id))
         .slice(0, 6)
         .map((p) => ({ id: p.id, caseId: p.caseId, title: p.title, subtitle: p.status.replace(/_/g, ' '), gate: p.currentGate })),
       applications: db.applications
         .filter((a) => match(a.caseId))
+        .filter((a) => mayRead('applications', a.id))
         .slice(0, 4)
         .map((a) => ({ id: a.id, caseId: a.caseId, title: a.caseId, subtitle: a.status.replace(/_/g, ' ') })),
     });

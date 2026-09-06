@@ -4,6 +4,7 @@ import { GATE_DECISIONS, gateSlaDays } from '@/config/gates';
 import { citationShort } from '@/config/policies';
 import { useGate, useGateDecision, usePilot, useRequestWaiver, useSession } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
+import { PageHeader } from '@/components/layout/Shell';
 import { CaseWorkspace } from '@/components/layout/CaseWorkspace';
 import { PanelSkeleton, InlineNote } from '@/components/ui/Feedback';
 import { FileCover } from '@/components/domain/FileCover';
@@ -15,7 +16,7 @@ import { Field, RadioGroup, Textarea } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Overlay';
 import { Breadcrumb } from '@/components/ui/Nav';
 import { AuditTrail } from '@/components/domain/RiskIncident';
-import { dayTime } from '@/lib/format';
+import { countOf, dayTime } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { PrayogApiError } from '@/services/api';
 import { useUi } from '@/store/ui';
@@ -61,18 +62,42 @@ export default function GateDecision() {
 
         return (
           <div>
-            <div className="mb-4">
-              <Breadcrumb
-                items={[
-                  { label: 'Department', to: '/d' },
-                  {
-                    label: entity.caseId,
-                    to: entity.type === 'challenge' ? `/d/challenges/${entity.id}` : `/d/pilots/${entity.id}`,
-                  },
-                  { label: `Gate ${record.gate.slice(1)}` },
-                ]}
-              />
-            </div>
+            <PageHeader
+              eyebrow={`${record.gate} · ${definition.name}`}
+              title={entity.title}
+              lead={definition.decides}
+              breadcrumb={
+                <Breadcrumb
+                  tone="deep"
+                  items={[
+                    { label: 'Who is waiting', to: '/d' },
+                    {
+                      label: entity.caseId,
+                      to: entity.type === 'challenge' ? `/d/challenges/${entity.id}` : `/d/pilots/${entity.id}`,
+                    },
+                    { label: `Gate ${record.gate.slice(1)}` },
+                  ]}
+                />
+              }
+              aside={
+                <span className="flex flex-col items-end gap-2">
+                  {decided ? (
+                    <SealStamp
+                      tone={record.status === 'cleared' ? 'cleared' : 'rejected'}
+                      gate={record.gate}
+                      date={record.decidedOn}
+                      by={owner.initials}
+                      animate={stamped}
+                    />
+                  ) : (
+                    <StatusBadge status={record.status} />
+                  )}
+                  <span className="rounded-pill border border-deep-rule bg-deep-2 px-3 py-1 text-micro text-deep-ink tnum">
+                    {preconditions.length - unmet.length} of {countOf(preconditions.length, 'precondition')} met
+                  </span>
+                </span>
+              }
+            />
 
             <CaseWorkspace
               gates={ladder}
@@ -116,49 +141,38 @@ export default function GateDecision() {
                   : []),
               ]}
             >
-              <div className="noting-page flex flex-col gap-6">
+              <div className="flex flex-col gap-6">
                 <FileCover
-                  className="noting-full"
                   caseId={entity.caseId}
                   title={entity.title}
-                  department={entity.departmentId}
+                  headingLevel={2}
+                  department={entity.departmentName}
                   owner={owner.name}
                   ownerInitials={owner.initials}
                   gate={record.gate}
                   gateName={definition.name}
                   amountPaise={entity.budgetPaise}
                   sla={{ startedOn: record.enteredOn, limitDays: gateSlaDays(record.gate) }}
-                  status={
-                    decided ? (
-                      <SealStamp
-                        tone={record.status === 'cleared' ? 'cleared' : 'rejected'}
-                        gate={record.gate}
-                        date={record.decidedOn}
-                        by={owner.initials}
-                        animate={stamped}
-                      />
-                    ) : (
-                      <StatusBadge status={record.status} />
-                    )
-                  }
+                  status={<StatusBadge status={record.status} />}
                 />
 
-                {/* 1. Decision — what am I deciding? */}
-                {/*
-                  A noting sheet has a ruled margin, and the authority for what
-                  is written sits in it. The heading and the text share one left
-                  edge past that margin, the way they do on the printed form.
-                */}
-                <section aria-labelledby="decides-heading" className="relative">
-                  <p className="noting-margin text-micro text-ink-soft">
-                    {citationShort('PRAYOG-SOP-4')}
-                    <span className="mt-1 block">Owner: {decisionRoleRequired.replace(/_/g, ' ')}</span>
-                    <span className="block">Window: {gateSlaDays(record.gate)} working days</span>
-                  </p>
-                  <h2 id="decides-heading" className="text-h2 text-ink">
-                    What gate {record.gate.slice(1)} decides
-                  </h2>
-                  <p className="mt-2 max-w-doc font-doc text-doc text-ink">{definition.decides}</p>
+{/* 1. Authority — under what, by whom, by when. */}
+                <section aria-label="The authority for this decision" className="sheet-flat overflow-hidden rounded-block">
+                  <dl className="grid grid-cols-1 md:grid-cols-3">
+                    {[
+                      { label: 'Decided under', value: citationShort('PRAYOG-SOP-4') },
+                      { label: 'Owned by', value: decisionRoleRequired.replace(/_/g, ' ') },
+                      { label: 'Decision window', value: `${gateSlaDays(record.gate)} working days` },
+                    ].map((cell, i) => (
+                      <div
+                        key={cell.label}
+                        className={['px-4 py-3', i < 2 ? 'border-b border-rule md:border-b-0 md:border-r' : ''].join(' ')}
+                      >
+                        <dt className="field-label">{cell.label}</dt>
+                        <dd className="mt-1 text-data text-ink">{cell.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </section>
 
                 {/* 2. Evidence — what conditions must be met? */}
@@ -356,6 +370,7 @@ export default function GateDecision() {
 
               {!decided ? (
                 <ApprovalBar
+                  eyebrow={`Gate ${record.gate.slice(1)} — ${definition.name}`}
                   consequence={
                     decision === 'clear'
                       ? `Clearing gate ${record.gate.slice(1)} takes effect immediately: ${definition.consequences[0]?.toLowerCase() ?? 'the case moves forward'}.`

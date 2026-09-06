@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { GATES, gateSlaDays } from '@/config/gates';
 import { usePilots } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
@@ -8,7 +9,7 @@ import { TableSkeleton } from '@/components/ui/Feedback';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { SlaClock } from '@/components/domain/SlaClock';
 import { FigureCard, MarkRupee, MarkCleared, MarkClock, MarkOverdue } from '@/components/ledger/FigureCard';
-import { achievement, kpiStatus } from '@/components/charts/MeasurementChart';
+import { beyondTarget, kpiStatus, progress } from '@/components/charts/MeasurementChart';
 import { countOf, day, daysBetween, money, moneyScaled, num, percent } from '@/lib/format';
 import type { PilotRow } from '@/services/hooks';
 
@@ -66,6 +67,7 @@ function SpendTrack({ spent, budget }: { spent: number; budget: number }) {
  * grid without reading a word of it.
  */
 function PilotCard({ row, onOpen }: { row: PilotRow; onOpen: () => void }) {
+  const { t } = useTranslation();
   const waiting = row.milestones.filter((m) => m.status === 'submitted' || m.status === 'under_review').length;
   const accepted = row.milestones.filter((m) => m.status === 'approved' || m.status === 'paid').length;
   const elapsed = Math.min(row.pilot.durationDays, Math.max(0, daysBetween(row.pilot.startedOn)));
@@ -83,7 +85,7 @@ function PilotCard({ row, onOpen }: { row: PilotRow; onOpen: () => void }) {
             <span className="type-register text-micro text-ink-soft">{row.pilot.caseId}</span>
             <span className="flex flex-wrap items-center gap-2">
               <StatusBadge status={row.pilot.status} />
-              {row.pilot.blocked ? <Badge tone="seal">Blocked</Badge> : null}
+              {row.pilot.blocked ? <Badge tone="seal">{t('deptPilots.list.blocked')}</Badge> : null}
             </span>
           </div>
           <h3 className="mt-2 font-display text-h3 text-ink">
@@ -97,7 +99,10 @@ function PilotCard({ row, onOpen }: { row: PilotRow; onOpen: () => void }) {
         <div className="flex flex-1 flex-col gap-4 px-5 py-5">
           <div>
             <p className="field-label">
-              Standing at {row.pilot.currentGate} · {GATES.find((g) => g.id === row.pilot.currentGate)?.name}
+              {t('deptPilots.list.standingAt', {
+                gate: row.pilot.currentGate,
+                name: GATES.find((g) => g.id === row.pilot.currentGate)?.name ?? '',
+              })}
             </p>
             <div className="mt-2">
               <SlaClock startedOn={row.pilot.gateEnteredOn} limitDays={gateSlaDays(row.pilot.currentGate)} />
@@ -106,9 +111,9 @@ function PilotCard({ row, onOpen }: { row: PilotRow; onOpen: () => void }) {
 
           <div>
             <div className="flex items-baseline justify-between gap-3">
-              <p className="field-label">Milestones</p>
+              <p className="field-label">{t('deptPilots.list.milestones')}</p>
               <p className="text-micro text-ink-soft tnum">
-                {accepted} of {row.milestones.length} accepted
+                {t('deptPilots.list.accepted', { done: accepted, total: row.milestones.length })}
               </p>
             </div>
             <div className="mt-2">
@@ -116,15 +121,17 @@ function PilotCard({ row, onOpen }: { row: PilotRow; onOpen: () => void }) {
             </div>
             {waiting > 0 ? (
               <p className="mt-2">
-                <Badge tone="hold">{countOf(waiting, 'milestone')} awaiting your finding</Badge>
+                <Badge tone="hold">{t('deptPilots.list.awaitingFinding', { count: waiting })}</Badge>
               </p>
             ) : null}
           </div>
 
           <div>
             <div className="flex items-baseline justify-between gap-3">
-              <p className="field-label">Released</p>
-              <p className="text-micro text-ink-soft tnum">of {money(row.pilot.budgetPaise)} committed</p>
+              <p className="field-label">{t('deptPilots.list.released')}</p>
+              <p className="text-micro text-ink-soft tnum">
+                {t('deptPilots.list.ofCommitted', { amount: money(row.pilot.budgetPaise) })}
+              </p>
             </div>
             <p className="mt-1 font-display text-figure text-verify tnum">{money(row.pilot.spentPaise)}</p>
             <SpendTrack spent={row.pilot.spentPaise} budget={row.pilot.budgetPaise} />
@@ -132,23 +139,33 @@ function PilotCard({ row, onOpen }: { row: PilotRow; onOpen: () => void }) {
 
           {k ? (
             <div className="rounded-sheet border border-rule bg-ledger px-4 py-3">
-              <p className="field-label">Headline measure</p>
+              <p className="field-label">{t('deptPilots.list.headlineMeasure')}</p>
               <p className="mt-1 text-body text-ink">{k.name}</p>
               <p className="mt-0.5 text-micro text-ink-soft tnum">
-                {num(k.baseline, 1)} → {num(k.current, 1)} {k.unit} · target {num(k.target, 1)}
+                {t('deptPilots.list.measureLine', {
+                  baseline: num(k.baseline, 1),
+                  current: num(k.current, 1),
+                  unit: k.unit,
+                  target: num(k.target, 1),
+                })}
               </p>
               <p className="mt-2">
-                <Badge tone={achievement(k) >= 100 ? 'verify' : achievement(k) >= 70 ? 'hold' : 'seal'}>
-                  {kpiStatus(k)} · {percent(achievement(k))}
+                <Badge tone={progress(k) >= 100 ? 'verify' : progress(k) >= 70 ? 'hold' : 'seal'}>
+                  {kpiStatus(k)} · {percent(progress(k))}
+                  {beyondTarget(k) > 0 ? ` · ${percent(beyondTarget(k))} past target` : ''}
                 </Badge>
               </p>
             </div>
           ) : (
-            <p className="text-micro text-ink-soft">No measure recorded yet.</p>
+            <p className="text-micro text-ink-soft">{t('deptPilots.list.noMeasureYet')}</p>
           )}
 
           <p className="mt-auto border-t border-rule pt-3 text-micro text-ink-soft tnum">
-            Day {elapsed} of {row.pilot.durationDays} · ends {day(row.pilot.endsOn)}
+            {t('deptPilots.list.dayLine', {
+              day: elapsed,
+              total: row.pilot.durationDays,
+              date: day(row.pilot.endsOn),
+            })}
           </p>
         </div>
       </article>
@@ -157,28 +174,29 @@ function PilotCard({ row, onOpen }: { row: PilotRow; onOpen: () => void }) {
 }
 
 export default function DepartmentPilots() {
+  const { t } = useTranslation();
   const query = usePilots();
   const navigate = useNavigate();
 
   return (
     <div>
       <PageHeader
-        eyebrow="Pilots in flight"
-        title="Pilots"
-        lead="Every pilot this department is steering, with the milestone that is waiting and the measure that matters."
+        eyebrow={t('deptPilots.list.eyebrow')}
+        title={t('deptPilots.list.title')}
+        lead={t('deptPilots.list.lead')}
         servedAt={query.data?.servedAt}
         onRefresh={() => void query.refetch()}
       />
 
       <QueryState
         query={query}
-        errorTitle="Unable to load pilots."
+        errorTitle={t('deptPilots.list.errorTitle')}
         loading={<TableSkeleton rows={6} columns={6} />}
         isEmpty={(d) => d.data.length === 0}
         empty={{
-          title: 'No active pilots.',
-          body: 'Approved pilots appear here as soon as gate 3 clears and a contract is signed.',
-          action: { label: 'Open the challenge pipeline', to: '/d/challenges' },
+          title: t('deptPilots.list.emptyTitle'),
+          body: t('deptPilots.list.emptyBody'),
+          action: { label: t('deptPilots.list.emptyAction'), to: '/d/challenges' },
         }}
       >
         {(payload) => {
@@ -249,6 +267,7 @@ export default function DepartmentPilots() {
 
                 <div className="border-t border-rule px-5 py-5">
                   <LedgerTable
+                    title="Every pilot, side by side"
                     caption="Pilots owned by this department"
                     exportName="prayog-pilots"
                     rows={rows}
@@ -377,8 +396,8 @@ export default function DepartmentPilots() {
                                 {num(k.baseline, 1)} → {num(k.current, 1)} {k.unit} · target {num(k.target, 1)}
                               </span>
                               <span className="mt-1 block">
-                                <Badge tone={achievement(k) >= 100 ? 'verify' : achievement(k) >= 70 ? 'hold' : 'seal'}>
-                                  {kpiStatus(k)} · {percent(achievement(k))}
+                                <Badge tone={progress(k) >= 100 ? 'verify' : progress(k) >= 70 ? 'hold' : 'seal'}>
+                                  {kpiStatus(k)} · {percent(progress(k))}
                                 </Badge>
                               </span>
                             </span>

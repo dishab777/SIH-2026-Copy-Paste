@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type StatusTone = 'verify' | 'hold' | 'seal' | 'neutral';
 
@@ -50,91 +51,107 @@ export function Badge({ tone = 'neutral', children, title, ground = 'paper' }: B
   );
 }
 
-const STATUS_TONES: Record<string, StatusTone> = {
+/*
+ * Every status the product shows, with the ink it is read in and the key its
+ * words are held under. The words themselves are not here. A badge is drawn by
+ * a component, which is the only place the bundle can be reached, so the map
+ * carries the key and `StatusBadge` resolves it at the render site.
+ */
+const STATUS: Record<string, { tone: StatusTone; labelKey: string }> = {
   // Challenge
-  draft: 'neutral',
-  in_review: 'hold',
-  open: 'verify',
-  closing_soon: 'hold',
-  closed: 'neutral',
-  awarded: 'verify',
-  cancelled: 'seal',
+  draft: { tone: 'neutral', labelKey: 'status.value.draft' },
+  in_review: { tone: 'hold', labelKey: 'status.value.in_review' },
+  open: { tone: 'verify', labelKey: 'status.value.open' },
+  closing_soon: { tone: 'hold', labelKey: 'status.value.closing_soon' },
+  closed: { tone: 'neutral', labelKey: 'status.value.closed' },
+  awarded: { tone: 'verify', labelKey: 'status.value.awarded' },
+  cancelled: { tone: 'seal', labelKey: 'status.value.cancelled' },
   // Application
-  submitted: 'neutral',
-  screening: 'hold',
-  eligible: 'verify',
-  ineligible: 'seal',
-  needs_review: 'hold',
-  shortlisted: 'verify',
-  under_evaluation: 'hold',
-  not_selected: 'neutral',
-  withdrawn: 'neutral',
+  submitted: { tone: 'neutral', labelKey: 'status.value.submitted' },
+  screening: { tone: 'hold', labelKey: 'status.value.screening' },
+  eligible: { tone: 'verify', labelKey: 'status.value.eligible' },
+  ineligible: { tone: 'seal', labelKey: 'status.value.ineligible' },
+  needs_review: { tone: 'hold', labelKey: 'status.value.needs_review' },
+  shortlisted: { tone: 'verify', labelKey: 'status.value.shortlisted' },
+  under_evaluation: { tone: 'hold', labelKey: 'status.value.under_evaluation' },
+  not_selected: { tone: 'neutral', labelKey: 'status.value.not_selected' },
+  withdrawn: { tone: 'neutral', labelKey: 'status.value.withdrawn' },
   // Milestone
-  not_started: 'neutral',
-  in_progress: 'hold',
-  under_review: 'hold',
-  approved: 'verify',
-  rejected: 'seal',
-  revision_required: 'seal',
-  paid: 'verify',
+  not_started: { tone: 'neutral', labelKey: 'status.value.not_started' },
+  in_progress: { tone: 'hold', labelKey: 'status.value.in_progress' },
+  under_review: { tone: 'hold', labelKey: 'status.value.under_review' },
+  approved: { tone: 'verify', labelKey: 'status.value.approved' },
+  rejected: { tone: 'seal', labelKey: 'status.value.rejected' },
+  revision_required: { tone: 'seal', labelKey: 'status.value.revision_required' },
+  paid: { tone: 'verify', labelKey: 'status.value.paid' },
   // Pilot
-  contracting: 'hold',
-  executing: 'verify',
-  awaiting_validation: 'hold',
-  validated: 'verify',
-  not_validated: 'seal',
-  closed_after_pilot: 'neutral',
-  scaled: 'verify',
+  contracting: { tone: 'hold', labelKey: 'status.value.contracting' },
+  executing: { tone: 'verify', labelKey: 'status.value.executing' },
+  awaiting_validation: { tone: 'hold', labelKey: 'status.value.awaiting_validation' },
+  validated: { tone: 'verify', labelKey: 'status.value.validated' },
+  not_validated: { tone: 'seal', labelKey: 'status.value.not_validated' },
+  closed_after_pilot: { tone: 'neutral', labelKey: 'status.value.closed_after_pilot' },
+  scaled: { tone: 'verify', labelKey: 'status.value.scaled' },
   // Claims
-  raised: 'neutral',
-  in_approval: 'hold',
-  on_hold: 'seal',
+  raised: { tone: 'neutral', labelKey: 'status.value.raised' },
+  in_approval: { tone: 'hold', labelKey: 'status.value.in_approval' },
+  on_hold: { tone: 'seal', labelKey: 'status.value.on_hold' },
   // Eligibility
-  auto_pass: 'verify',
-  auto_fail: 'seal',
-  not_run: 'neutral',
-  pass: 'verify',
-  fail: 'seal',
-  review: 'hold',
+  auto_pass: { tone: 'verify', labelKey: 'status.value.auto_pass' },
+  auto_fail: { tone: 'seal', labelKey: 'status.value.auto_fail' },
+  not_run: { tone: 'neutral', labelKey: 'status.value.not_run' },
+  pass: { tone: 'verify', labelKey: 'status.value.pass' },
+  fail: { tone: 'seal', labelKey: 'status.value.fail' },
+  review: { tone: 'hold', labelKey: 'status.value.review' },
   // Gates
-  cleared: 'verify',
-  blocked: 'seal',
-  future: 'neutral',
+  cleared: { tone: 'verify', labelKey: 'status.value.cleared' },
+  blocked: { tone: 'seal', labelKey: 'status.value.blocked' },
+  future: { tone: 'neutral', labelKey: 'status.value.future' },
   // Verification / scan
-  verified: 'verify',
-  pending: 'hold',
-  failed: 'seal',
-  clean: 'verify',
+  verified: { tone: 'verify', labelKey: 'status.value.verified' },
+  pending: { tone: 'hold', labelKey: 'status.value.pending' },
+  failed: { tone: 'seal', labelKey: 'status.value.failed' },
+  clean: { tone: 'verify', labelKey: 'status.value.clean' },
   // Validation outcomes
-  validated_with_qualifications: 'hold',
-  met: 'verify',
-  partially_met: 'hold',
-  not_met: 'seal',
+  validated_with_qualifications: { tone: 'hold', labelKey: 'status.value.validated_with_qualifications' },
+  met: { tone: 'verify', labelKey: 'status.value.met' },
+  partially_met: { tone: 'hold', labelKey: 'status.value.partially_met' },
+  not_met: { tone: 'seal', labelKey: 'status.value.not_met' },
   // Recognition
-  recognised: 'verify',
-  expired: 'seal',
-  unverified: 'hold',
-  not_a_startup: 'neutral',
-  active: 'verify',
-  suspended: 'seal',
+  recognised: { tone: 'verify', labelKey: 'status.value.recognised' },
+  expired: { tone: 'seal', labelKey: 'status.value.expired' },
+  unverified: { tone: 'hold', labelKey: 'status.value.unverified' },
+  not_a_startup: { tone: 'neutral', labelKey: 'status.value.not_a_startup' },
+  active: { tone: 'verify', labelKey: 'status.value.active' },
+  suspended: { tone: 'seal', labelKey: 'status.value.suspended' },
   // Integrations
-  mock_healthy: 'verify',
-  mock_degraded: 'hold',
-  mock_down: 'seal',
-  not_configured: 'neutral',
+  mock_healthy: { tone: 'verify', labelKey: 'status.value.mock_healthy' },
+  mock_degraded: { tone: 'hold', labelKey: 'status.value.mock_degraded' },
+  mock_down: { tone: 'seal', labelKey: 'status.value.mock_down' },
+  not_configured: { tone: 'neutral', labelKey: 'status.value.not_configured' },
   // Risks and incidents
-  mitigating: 'hold',
-  contained: 'hold',
-  resolved: 'verify',
-  low: 'neutral',
-  medium: 'hold',
-  high: 'seal',
+  mitigating: { tone: 'hold', labelKey: 'status.value.mitigating' },
+  contained: { tone: 'hold', labelKey: 'status.value.contained' },
+  resolved: { tone: 'verify', labelKey: 'status.value.resolved' },
+  low: { tone: 'neutral', labelKey: 'status.value.low' },
+  medium: { tone: 'hold', labelKey: 'status.value.medium' },
+  high: { tone: 'seal', labelKey: 'status.value.high' },
 };
 
 export function statusTone(status: string): StatusTone {
-  return STATUS_TONES[status] ?? 'neutral';
+  return STATUS[status]?.tone ?? 'neutral';
 }
 
+/**
+ * The bundle key a status is read by, or nothing for a value the interface
+ * does not name. This is not a component and cannot reach a hook, so it hands
+ * the key back for the caller to resolve.
+ */
+export function statusLabelKey(status: string): string | undefined {
+  return STATUS[status]?.labelKey;
+}
+
+/** The last resort for a status the map does not carry: its own words, tidied. */
 export function statusWords(status: string): string {
   const words = status.replace(/_/g, ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
@@ -149,9 +166,11 @@ export function StatusBadge({
   label?: string;
   ground?: 'paper' | 'deep';
 }) {
+  const { t } = useTranslation();
+  const key = statusLabelKey(status);
   return (
     <Badge tone={statusTone(status)} ground={ground}>
-      {label ?? statusWords(status)}
+      {label ?? (key ? t(key) : statusWords(status))}
     </Badge>
   );
 }

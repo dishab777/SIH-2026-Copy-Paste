@@ -19,7 +19,16 @@ const DEFAULT_BY_ROLE: Record<Role, string> = {
   pmu: 'USR-PMU-01',
 };
 
-let currentUserId: string | null = 'USR-D01-OFF';
+/*
+ * Nobody, until somebody signs in.
+ *
+ * This used to open the session on the Pune nodal officer, which meant the
+ * product booted already inside a department: the public site showed the
+ * document room, 'Sign in' appeared to sign you in as a stranger, and signing
+ * out and reloading put you back at that stranger's desk. A demonstration
+ * dataset is not a reason to start a session as somebody.
+ */
+let currentUserId: string | null = null;
 
 export function signIn(userId: string): User | null {
   const user = getDb().users.find((u) => u.id === userId) ?? null;

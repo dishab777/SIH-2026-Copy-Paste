@@ -20,7 +20,8 @@ export type ConfigGroup =
   | 'gate'
   | 'pilot'
   | 'data'
-  | 'procurement';
+  | 'procurement'
+  | 'account';
 
 export interface PolicyCitation {
   id: string;

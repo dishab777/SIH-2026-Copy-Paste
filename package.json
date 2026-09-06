@@ -12,7 +12,9 @@
     "lint": "eslint .",
     "check:spacing": "node scripts/check-spacing.mjs",
     "check:design": "node scripts/check-design.mjs",
-    "check": "npm run typecheck && npm run lint && npm run check:spacing && npm run check:design"
+    "check": "npm run typecheck && npm run lint && npm run check:spacing && npm run check:design && npm run check:links && npm run check:i18n",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

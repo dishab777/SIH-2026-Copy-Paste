@@ -17,7 +17,7 @@ import { FileCover } from '@/components/domain/FileCover';
 import { MilestoneCard, MilestoneTimeline, EvidenceVault } from '@/components/domain/Milestones';
 import { RiskRegister, IncidentLog, ChangeRequestList } from '@/components/domain/RiskIncident';
 import { PaymentAgeingBar } from '@/components/domain/SlaClock';
-import { MeasurementChart, achievement, kpiStatus } from '@/components/charts/MeasurementChart';
+import { MeasurementChart, beyondTarget, kpiStatus, progress } from '@/components/charts/MeasurementChart';
 import { DataTierBadge } from '@/components/domain/Legal';
 import { KeyValueSheet, StatLedger } from '@/components/ledger/Ledger';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -162,8 +162,12 @@ export default function PilotSteering() {
                       },
                       {
                         label: 'KPI achievement',
-                        value: headline ? percent(achievement(headline)) : '—',
-                        detail: headline ? kpiStatus(headline) : 'No measure recorded',
+                        value: headline ? percent(progress(headline)) : '—',
+                        detail: headline
+                          ? beyondTarget(headline) > 0
+                            ? `${kpiStatus(headline)} · ${percent(beyondTarget(headline))} past target`
+                            : kpiStatus(headline)
+                          : 'No measure recorded',
                       },
                       {
                         label: 'Budget released',

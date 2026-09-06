@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   useScoringWorkspace,
@@ -7,6 +7,7 @@ import {
   useSubmitEvaluation,
 } from '@/services/hooks';
 import { QueryState } from '@/components/layout/QueryState';
+import { PageHeader } from '@/components/layout/Shell';
 import { PanelSkeleton, InlineNote, ErrorState } from '@/components/ui/Feedback';
 import { RubricScorer } from '@/components/domain/RubricScorer';
 import { KeyValueSheet } from '@/components/ledger/Ledger';
@@ -15,10 +16,29 @@ import { Button } from '@/components/ui/Button';
 import { Breadcrumb } from '@/components/ui/Nav';
 import { Modal } from '@/components/ui/Overlay';
 import { SealStamp } from '@/components/domain/SealStamp';
-import { dayTime, money, num } from '@/lib/format';
+import { countOf, dayTime, money, num } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { PrayogApiError } from '@/services/api';
 import { useUi } from '@/store/ui';
+
+/**
+ * A section of the document you are judging, set as a document.
+ *
+ * The rubric beside it is interface — fields, a scale, a save. This is paper,
+ * and it should read as paper: a titled sheet with a ruled head, not a bare
+ * heading over a paragraph on the page ground.
+ */
+function Paper({ title, eyebrow, children }: { title: string; eyebrow: string; children: ReactNode }) {
+  return (
+    <section className="sheet-flat overflow-hidden rounded-block">
+      <header className="border-b border-ink bg-ledger px-4 py-3">
+        <p className="field-label !text-saffron-ink">{eyebrow}</p>
+        <h2 className="mt-0.5 font-display text-h3 text-ink">{title}</h2>
+      </header>
+      <div className="px-4 py-5">{children}</div>
+    </section>
+  );
+}
 
 export default function ScoreWorkspace() {
   const { appId } = useParams();
@@ -45,27 +65,46 @@ export default function ScoreWorkspace() {
     const api = err instanceof PrayogApiError ? err : null;
     if (api?.code === 'COI_REQUIRED') {
       return (
-        <div className="mx-auto max-w-[720px]">
-          <InlineNote tone="seal" title="Declare conflicts before opening this proposal">
-            <p className="max-w-doc">{api.details.join(' ')}</p>
-            <div className="mt-4">
-              <Button tone="primary" onClick={() => navigate(`/e/coi/${appId}`)}>
-                Go to the declaration
-              </Button>
-            </div>
-          </InlineNote>
+        <div>
+          <PageHeader
+            eyebrow="Closed to you"
+            title="Declare conflicts before opening this proposal"
+            lead="The applicant identity and the proposal stay closed until your declaration is on the record. That is not a permissions quirk — it is what makes the panel independent."
+            breadcrumb={<Breadcrumb tone="deep" items={[{ label: 'Assignment queue', to: '/e' }]} />}
+          />
+          <div className="mx-auto max-w-[760px]">
+            <InlineNote tone="seal" title="Nothing here has been opened">
+              <p className="max-w-doc">{api.details.join(' ')}</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button tone="primary" onClick={() => navigate(`/e/coi/${appId}`)}>
+                  Go to the declaration
+                </Button>
+                <Button onClick={() => navigate('/e')}>Back to your queue</Button>
+              </div>
+            </InlineNote>
+          </div>
         </div>
       );
     }
     if (api?.code === 'RECUSED') {
       return (
-        <div className="mx-auto max-w-[720px]">
-          <InlineNote tone="seal" title="You are recused from this application">
-            <p className="max-w-doc">{api.details.join(' ')}</p>
-            <div className="mt-4">
-              <Button onClick={() => navigate('/e')}>Back to your queue</Button>
-            </div>
-          </InlineNote>
+        <div>
+          <PageHeader
+            eyebrow="Closed to you"
+            title="You are recused from this application"
+            lead="You declared a conflict on it. The programme management unit has been notified and will reassign it; your other assignments are unaffected."
+            breadcrumb={<Breadcrumb tone="deep" items={[{ label: 'Assignment queue', to: '/e' }]} />}
+          />
+          <div className="mx-auto max-w-[760px]">
+            <InlineNote tone="seal" title="This proposal was never opened to you">
+              <p className="max-w-doc">{api.details.join(' ')}</p>
+              <div className="mt-4">
+                <Button tone="primary" onClick={() => navigate('/e')}>
+                  Back to your queue
+                </Button>
+              </div>
+            </InlineNote>
+          </div>
         </div>
       );
     }
@@ -88,33 +127,26 @@ export default function ScoreWorkspace() {
 
         return (
           <div>
-            <div className="mb-4">
-              <Breadcrumb items={[{ label: 'Assignment queue', to: '/e' }, { label: a.caseId }]} />
-            </div>
-
-            <header className="mb-6 border-b border-ink pb-4">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="max-w-doc">
-                  <p className="text-micro text-ink-soft tnum">
-                    {c.caseId} · {a.caseId}
-                  </p>
-                  <h1 className="mt-1 text-h1 text-ink">{c.title}</h1>
-                  <p className="mt-2 text-body text-ink-soft">
-                    Scored against {rub.label} {rub.version} — the rubric published with the challenge, unchanged.
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {submitted ? (
-                    <SealStamp tone="cleared" date={own?.submittedAt} />
-                  ) : (
+            <PageHeader
+              eyebrow={`Scoring · ${rub.label} ${rub.version}`}
+              title={c.title}
+              lead={`Scored against the rubric published with the challenge, unchanged. Each of the ${rub.criteria.length} criteria carries its own weight and needs a written reason.`}
+              breadcrumb={
+                <Breadcrumb tone="deep" items={[{ label: 'Assignment queue', to: '/e' }, { label: a.caseId }]} />
+              }
+              aside={
+                submitted ? (
+                  <SealStamp tone="cleared" date={own?.submittedAt} />
+                ) : (
+                  <span className="flex flex-col items-end gap-2">
                     <StatusBadge status={own?.status ?? 'not_started'} />
-                  )}
-                  <Button size="sm" onClick={() => navigate('/e')}>
-                    Back to the queue
-                  </Button>
-                </div>
-              </div>
-            </header>
+                    <Button size="sm" onClick={() => navigate('/e')}>
+                      Back to the queue
+                    </Button>
+                  </span>
+                )
+              }
+            />
 
             {submitted ? (
               <div className="mb-6">
@@ -137,39 +169,53 @@ export default function ScoreWorkspace() {
               </div>
             ) : null}
 
-            {/* Split layout: proposal on the left, scorer on the right. */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div className="flex flex-col gap-6 lg:max-h-[calc(100vh-220px)] lg:overflow-auto lg:pr-2 scroll-quiet">
-                <section>
-                  <h2 className="mb-2 text-h2 text-ink">The problem, as published</h2>
+            {/*
+             * Proposal on the left, scorer on the right. The proposal column
+             * used to cap its own height and scroll inside itself, which meant
+             * the page had two scrollbars and the wheel moved whichever one the
+             * pointer was over. It scrolls with the page now; the scorer is
+             * what sticks, because that is the thing you keep reaching for.
+             */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+              <div className="flex min-w-0 flex-col gap-6">
+                <Paper title="The problem, as published" eyebrow="Published with the challenge">
                   <p className="max-w-doc font-doc text-doc text-ink">{c.problem.whatHappensToday}</p>
-                  <p className="mt-3 max-w-doc text-body text-ink-soft">
-                    Baseline: {num(c.baseline.currentValue, 1)} {c.baseline.unit}. Target:{' '}
-                    {num(c.outcome.magnitude, 1)} {c.outcome.unit}. Failure threshold:{' '}
-                    {num(c.outcome.failureThreshold, 1)} {c.outcome.unit}.
-                  </p>
-                </section>
+                  <dl className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-sheet border border-rule bg-rule md:grid-cols-3">
+                    {[
+                      { label: 'Baseline today', value: `${num(c.baseline.currentValue, 1)} ${c.baseline.unit}` },
+                      { label: 'Target', value: `${num(c.outcome.magnitude, 1)} ${c.outcome.unit}` },
+                      { label: 'Failure threshold', value: `${num(c.outcome.failureThreshold, 1)} ${c.outcome.unit}` },
+                    ].map((cell) => (
+                      <div key={cell.label} className="bg-ledger px-3 py-2.5">
+                        <dt className="field-label">{cell.label}</dt>
+                        <dd className="mt-0.5 text-data text-ink tnum">{cell.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Paper>
 
-                <section>
-                  <h2 className="mb-2 text-h2 text-ink">The proposal</h2>
-                  <dl className="flex flex-col gap-4">
+                <Paper title="The proposal" eyebrow="In the applicant's own words">
+                  <dl className="flex flex-col gap-5">
                     {[
                       { label: 'Understanding of the problem', value: a.solution.problemUnderstanding },
                       { label: 'Approach', value: a.solution.approach },
                       { label: 'What already exists', value: a.solution.existingSolution },
                       { label: 'What will be built', value: a.solution.proposedDevelopment },
                     ].map((row) => (
-                      <div key={row.label}>
-                        <dt className="text-label text-ink-soft">{row.label}</dt>
-                        <dd className="mt-1 max-w-doc font-doc text-doc text-ink">{row.value || '—'}</dd>
+                      <div key={row.label} className="border-l-2 border-l-rule pl-4">
+                        <dt className="field-label">{row.label}</dt>
+                        <dd className="mt-1.5 max-w-doc font-doc text-doc text-ink">{row.value || '—'}</dd>
                       </div>
                     ))}
                   </dl>
-                </section>
+                </Paper>
 
-                <section>
-                  <h2 className="mb-2 text-h2 text-ink">Pilot plan</h2>
-                  <ol className="sheet-flat">
+                <section className="sheet-flat overflow-hidden rounded-block">
+                  <header className="border-b border-ink bg-ledger px-4 py-3">
+                    <p className="field-label !text-saffron-ink">{countOf(a.pilotPlan.milestones.length, 'milestone')}</p>
+                    <h2 className="mt-0.5 font-display text-h3 text-ink">Pilot plan</h2>
+                  </header>
+                  <ol>
                     {a.pilotPlan.milestones.map((m, i) => (
                       <li key={`${m.name}-${i}`} className="ledger-row px-4 py-3">
                         <p className="text-micro text-ink-soft tnum">
@@ -182,7 +228,7 @@ export default function ScoreWorkspace() {
                     ))}
                   </ol>
                   {a.pilotPlan.dependencies.length ? (
-                    <p className="mt-2 text-micro text-ink-soft">
+                    <p className="border-t border-rule bg-ledger px-4 py-3 text-micro text-ink-soft">
                       Dependencies: {a.pilotPlan.dependencies.join('; ')}
                     </p>
                   ) : null}
@@ -232,7 +278,7 @@ export default function ScoreWorkspace() {
                 />
               </div>
 
-              <div className="lg:sticky lg:top-20 lg:self-start">
+              <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20">
                 <RubricScorer
                   rubric={rub}
                   scores={own?.scores ?? []}
@@ -267,7 +313,7 @@ export default function ScoreWorkspace() {
                   onSubmit={() => setConfirming(true)}
                 />
 
-                <div className="mt-4">
+                <div>
                   {othersHiddenCount > 0 ? (
                     <InlineNote tone="neutral" title={`${othersHiddenCount} other evaluators are scoring this`}>
                       Their scores stay hidden until the panel releases results. You cannot see them, and they cannot see
